@@ -371,14 +371,9 @@
 
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        const ADMIN_PASSWORD = "sel889088";
-
-        const TEACHERS = {
-            "Hakan Hoca":   { password: "102030", branch: "matematik" },
-            "Yasemin Hoca": { password: "405060", branch: "fen" },
-            "İsmail Hoca":  { password: "708090", branch: "türkçe" },
-            "Osman Hoca":   { password: "1111", branch: "sosyal" }
-        };
+                // ⚠️ Şifreler artık Supabase'de saklanıyor — burada sadece boş başlangıç
+        let ADMIN_PASSWORD = "admin123";  // Supabase'den güncellenecek
+        let TEACHERS = {};                // Supabase'den doldurulacak
 
         const BRANCH_LABELS = {
             "matematik": "Matematik",
@@ -500,8 +495,28 @@
                 });
 
                 // Ay anahtarı Supabase'de meta tablosunda yoksa localStorage fallback
+                                // Ay anahtarı Supabase'de meta tablosunda yoksa localStorage fallback
                 const savedMonth = localStorage.getItem('currentMonthKey');
                 if (savedMonth) currentMonthKey = savedMonth;
+
+                // ⭐ HOCALARI SUPABASE'DEN YÜKLE
+                const { data: hocalarData, error: hocalarErr } = await supabaseClient
+                    .from('hocalar').select('*');
+                if (hocalarErr) throw hocalarErr;
+
+                TEACHERS = {};
+                (hocalarData || []).forEach(h => {
+                    TEACHERS[h.isim] = { password: h.sifre, branch: h.brans };
+                });
+
+                // ⭐ ADMİN ŞİFRESİNİ SUPABASE'DEN YÜKLE
+                const { data: adminAyar, error: adminErr } = await supabaseClient
+                    .from('ayarlar').select('deger')
+                    .eq('anahtar', 'admin_sifre').maybeSingle();
+
+                if (!adminErr && adminAyar) {
+                    ADMIN_PASSWORD = adminAyar.deger;
+                }
 
             } catch (err) {
                 console.error("Supabase yükleme hatası:", err);
@@ -669,8 +684,9 @@
             }
         }
 
-        function fillTeacherSelect() {
+                function fillTeacherSelect() {
             const sel = document.getElementById("teacherSelect");
+            const prev = sel.value;
             sel.innerHTML = '<option value="">-- Hoca Seçin --</option>';
             Object.keys(TEACHERS).forEach(name => {
                 const opt = document.createElement("option");
@@ -678,6 +694,7 @@
                 opt.innerText = `${name} (${BRANCH_LABELS[TEACHERS[name].branch]})`;
                 sel.appendChild(opt);
             });
+            if (prev && TEACHERS[prev]) sel.value = prev;
         }
 
         function fillStudentSelect() {
