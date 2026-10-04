@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title>Öğretmen Etüt Takip Sistemi</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        :root {
+            --mat-bg: #fdecea;
+            --fen-bg: #eafaf1;
+            --tur-bg: #f4ecf7;
+            --sos-bg: #fef5e7;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f6fa;
+            font-size: 14px;
+        }
+
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 12px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        header h1 { margin: 0; font-size: 16px; white-space: nowrap; }
+        .user-panel { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .user-panel select, .user-panel input {
+            padding: 8px 10px; font-size: 13px; border-radius: 5px;
+            border: 1px solid #ccc; min-height: 38px;
+        }
+        button {
+            padding: 8px 14px; border: none; background-color: #34495e; color: white;
+            cursor: pointer; border-radius: 5px; font-weight: bold; font-size: 13px;
+            min-height: 38px; touch-action: manipulation;
+        }
+        button:hover { background-color: #465866; }
+        button:disabled { background-color: #95a5a6; cursor: not-allowed; }
+        .btn-danger { background-color: #e74c3c; }
+        .btn-danger:hover { background-color: #c0392b; }
+        .btn-secondary { background-color: #7f8c8d; }
+        .btn-excel { background-color: #1d6f42; }
+        .btn-excel:hover { background-color: #165a35; }
+        .btn-red { background-color: #ff4d4d; }
+        .btn-blue { background-color: #3498db; }
+        .logged-info { color: #2ecc71; font-weight: bold; font-size: 13px; }
+        .branch-info { color: #f39c12; font-weight: bold; font-size: 13px; }
+
+        .step-info {
+            background: #fff3cd; border-bottom: 1px solid #ffeeba; color: #856404;
+            padding: 10px 15px; font-weight: bold; font-size: 13px; text-align: center;
+        }
+        .step-info.done { background: #d4edda; border-color: #c3e6cb; color: #155724; }
+
+        .color-bar {
+            display: none; align-items: center; gap: 10px; padding: 10px 15px;
+            background: #fff; border-bottom: 1px solid #ddd; flex-wrap: wrap;
+        }
+        .color-bar .label { font-weight: bold; color: #2c3e50; font-size: 13px; }
+        .color-btn {
+            padding: 8px 16px; border: 3px solid transparent; border-radius: 5px;
+            cursor: pointer; font-weight: bold; color: white; font-size: 13px;
+        }
+        .color-btn.active { border-color: #2c3e50; box-shadow: 0 0 8px rgba(0,0,0,0.3); }
+        .color-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+        .student-bar {
+            display: none; align-items: center; gap: 10px; padding: 10px 15px;
+            background: #ecf0f1; flex-wrap: wrap;
+        }
+        .student-bar .label { font-weight: bold; color: #2c3e50; font-size: 13px; }
+        .student-bar select {
+            padding: 8px 10px; font-size: 13px; border-radius: 5px; border: 1px solid #aaa;
+            min-width: 180px; flex: 1; max-width: 320px; min-height: 38px;
+        }
+        .student-bar select:disabled { background: #ddd; cursor: not-allowed; }
+
+        .controls {
+            display: none; justify-content: space-between; align-items: center;
+            padding: 12px 15px; background-color: #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 8px; flex-wrap: wrap; gap: 10px;
+        }
+        .controls select { padding: 8px; font-size: 13px; border-radius: 5px; }
+
+        .archive-row {
+            display: none; gap: 6px; flex-wrap: wrap; align-items: center;
+            padding: 10px 15px; background: #e8f5e9; border-bottom: 2px solid #a5d6a7;
+        }
+        .archive-row .title {
+            font-weight: bold; color: #1b5e20; font-size: 13px; margin-right: 8px;
+        }
+
+        .legend {
+            display: flex; gap: 8px; padding: 8px 15px; flex-wrap: wrap;
+            font-size: 12px; background: #fff;
+        }
+        .badge {
+            padding: 4px 9px; border-radius: 4px; color: white;
+            font-size: 11px; font-weight: bold;
+        }
+        .badge-red { background-color: #ff4d4d; }
+        .badge-blue { background-color: #3498db; }
+        .badge-info { background-color: #7f8c8d; }
+        .badge-past { background-color: #c0392b; }
+        .badge-loading { background-color: #f39c12; }
+
+        .table-wrapper {
+            padding: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch;
+        }
+        table {
+            width: 100%; border-collapse: collapse; background-color: #fff;
+            table-layout: fixed; min-width: 1100px;
+        }
+        th, td {
+            border: 1px solid #bdc3c7; text-align: center; padding: 2px; overflow: hidden;
+        }
+
+        thead tr:first-child th {
+            color: white; font-size: 14px; font-weight: bold;
+            padding: 10px 4px; letter-spacing: 0.5px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+        thead tr:first-child th.date-header {
+            background-color: #2c3e50; font-size: 13px; width: 80px;
+        }
+        thead tr:first-child th[data-lesson="matematik"] {
+            background: linear-gradient(180deg, #e74c3c, #c0392b);
+            border-left: 4px solid #2c3e50; border-right: 4px solid #2c3e50;
+        }
+        thead tr:first-child th[data-lesson="fen"] {
+            background: linear-gradient(180deg, #27ae60, #1e8449);
+            border-right: 4px solid #2c3e50;
+        }
+        thead tr:first-child th[data-lesson="türkçe"] {
+            background: linear-gradient(180deg, #8e44ad, #6c3483);
+            border-right: 4px solid #2c3e50;
+        }
+        thead tr:first-child th[data-lesson="sosyal"] {
+            background: linear-gradient(180deg, #e67e22, #ca6f1e);
+        }
+
+        #slotHeaderRow th {
+            background-color: #465866; color: white; font-size: 11px;
+            padding: 5px 1px; font-weight: normal;
+        }
+        #slotHeaderRow th[data-lesson="matematik"] { background-color: #d98880; }
+        #slotHeaderRow th[data-lesson="matematik"]:first-child { border-left: 4px solid #2c3e50; }
+        #slotHeaderRow th[data-lesson="fen"] { background-color: #7dcea0; }
+        #slotHeaderRow th[data-lesson="türkçe"] { background-color: #bb8fce; }
+        #slotHeaderRow th[data-lesson="sosyal"] { background-color: #f0b27a; }
+
+        #slotHeaderRow th.slot-end, tbody td.slot.slot-end { border-right: 4px solid #2c3e50 !important; }
+        #slotHeaderRow th.slot-start, tbody td.slot.slot-start { border-left: 4px solid #2c3e50 !important; }
+
+        tbody td {
+            height: 36px; font-size: 10px; font-weight: bold;
+            white-space: normal; line-height: 1.1; word-break: break-word; padding: 2px 1px;
+        }
+        tbody td:first-child {
+            font-weight: bold; font-size: 11px;
+            background: #ecf0f1; color: #2c3e50;
+        }
+
+        tbody td.slot[data-lesson="matematik"] { background-color: var(--mat-bg); }
+        tbody td.slot[data-lesson="fen"]      { background-color: var(--fen-bg); }
+        tbody td.slot[data-lesson="türkçe"]   { background-color: var(--tur-bg); }
+        tbody td.slot[data-lesson="sosyal"]   { background-color: var(--sos-bg); }
+
+        td.slot { cursor: pointer; transition: all 0.15s; }
+        td.slot:hover { filter: brightness(0.93); }
+        td.slot.type-kirmizi { background-color: #ff4d4d !important; color: white !important; }
+        td.slot.type-mavi    { background-color: #3498db !important; color: white !important; }
+
+        td.slot.selected {
+            outline: 3px solid #f39c12; outline-offset: -3px;
+            transform: scale(1.08); z-index: 10; position: relative;
+            box-shadow: 0 0 12px rgba(243, 156, 18, 0.8);
+        }
+
+        td.slot.branch-locked {
+            background-color: #e5e5e5 !important; cursor: not-allowed !important; opacity: 0.55;
+        }
+
+        td.slot.past-day {
+            background-color: #f5f5f5 !important;
+            color: #bdc3c7 !important;
+            cursor: not-allowed !important;
+            opacity: 0.7;
+            position: relative;
+        }
+        td.slot.past-day::after {
+            content: "🔒";
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12px;
+            opacity: 0.6;
+        }
+        td.slot.past-day:hover { filter: none; }
+        td.slot.past-day.type-kirmizi,
+        td.slot.past-day.type-mavi { opacity: 1; }
+        td.slot.past-day.type-kirmizi::after,
+        td.slot.past-day.type-mavi::after { content: ""; }
+
+        tbody tr.today-row td:first-child {
+            background: #f39c12 !important;
+            color: white;
+            font-size: 11px;
+        }
+        td.slot.today-cell { box-shadow: inset 0 0 0 2px #f39c12; }
+
+        td.slot.admin-editable { cursor: cell !important; }
+        td.slot.admin-editable.branch-locked {
+            background-color: #f8d7da !important; opacity: 1; cursor: cell !important;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(120%); opacity: 0; }
+            to   { transform: translateX(0);    opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            header { padding: 10px; flex-direction: column; align-items: stretch; }
+            header h1 { font-size: 15px; text-align: center; }
+            .user-panel { justify-content: center; width: 100%; }
+            .user-panel select, .user-panel input { flex: 1; min-width: 0; }
+            .user-panel button { flex: 0 0 auto; }
+            .step-info { font-size: 12px; padding: 8px 10px; }
+            .color-bar, .student-bar { padding: 8px 10px; }
+            .color-bar .label, .student-bar .label { font-size: 12px; width: 100%; }
+            .student-bar select { max-width: none; }
+            .controls { flex-direction: column; align-items: stretch; }
+            .controls > div { display: flex; flex-wrap: wrap; gap: 6px; }
+            .controls button, .controls select { flex: 1; min-width: 100px; }
+            .table-wrapper { padding: 4px; }
+            table { min-width: 900px; }
+            thead tr:first-child th { font-size: 12px; padding: 7px 2px; }
+            tbody td { height: 32px; font-size: 9px; }
+            tbody td:first-child { font-size: 10px; }
+        }
+        @media (max-width: 480px) {
+            .user-panel { flex-direction: column; align-items: stretch; }
+            .user-panel button { width: 100%; }
+            .color-btn { flex: 1; text-align: center; }
+            table { min-width: 800px; }
+            tbody td { height: 28px; font-size: 8px; }
+        }
+
+        .scroll-hint {
+            display: none; text-align: center; font-size: 11px; color: #7f8c8d;
+            padding: 4px; background: #f8f9fa; border-bottom: 1px solid #e9ecef;
+        }
+        @media (max-width: 1100px) { .scroll-hint { display: block; } }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>📚 Etüt Takip Sistemi</h1>
+        <div class="user-panel">
+            <div id="loginZone" style="display:flex; gap:8px; flex-wrap:wrap;">
+                <select id="teacherSelect">
+                    <option value="">-- Hoca Seçin --</option>
+                </select>
+                <input type="password" id="teacherPass" placeholder="Şifre" />
+                <button onclick="loginTeacher()">Giriş Yap</button>
+            </div>
+            <div id="loggedZone" style="display:none; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span class="logged-info">👤 <span id="loggedTeacherName"></span></span>
+                <span class="branch-info">📚 <span id="loggedTeacherBranch"></span></span>
+                <button onclick="logoutTeacher()" style="background:#e74c3c;">Çıkış</button>
+            </div>
+            <div class="admin-zone">
+                <button id="adminBtn" onclick="toggleAdminMode()">Admin</button>
+                <span id="adminStatus" style="display:none; color:#2ecc71; font-weight:bold;">⚡</span>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="step-info" id="stepInfo">
+            <span class="badge badge-loading">⏳ Supabase'den veri yükleniyor...</span>
+        </div>
+
+        <div class="color-bar" id="colorBar">
+            <span class="label">1️⃣ Renk:</span>
+            <button class="color-btn btn-red" data-color="Kırmızı" onclick="selectColor('Kırmızı')" disabled>🔴 Kırmızı</button>
+            <button class="color-btn btn-blue" data-color="Mavi" onclick="selectColor('Mavi')" disabled>🔵 Mavi</button>
+            <span id="selectedColorInfo" style="margin-left:10px; color:#555; font-size:12px;"></span>
+        </div>
+
+        <div class="student-bar" id="studentBar">
+            <span class="label">2️⃣ Öğrenci:</span>
+            <select id="studentSelect" disabled>
+                <option value="">-- Öğrenci Seçin --</option>
+            </select>
+            <span class="badge badge-info" id="studentStatusBadge">Seçili: yok</span>
+        </div>
+
+        <section class="controls" id="adminControls">
+            <div class="archive-management" style="display:flex; gap:6px; flex-wrap:wrap;">
+                <button onclick="downloadCurrentExcel()" class="btn-excel">📊 Güncel Ayı Excel İndir</button>
+                <button onclick="saveAndClearMonth()" class="btn-danger">Ayı Bitir ve Arşivle</button>
+                <button onclick="exportData()" class="btn-secondary">Yedekle (.json)</button>
+                <input type="file" id="importFile" onchange="importData()" style="display:none;">
+                <button onclick="document.getElementById('importFile').click()" class="btn-secondary">Yedekten Yükle</button>
+                <button onclick="openStudentManager()" class="btn-secondary">Öğrenci Listesi</button>
+            </div>
+        </section>
+
+        <div class="archive-row" id="archiveRow">
+            <span class="title">📁 Geçmiş Aylar:</span>
+            <select id="archiveList" style="padding:8px; font-size:13px; border-radius:5px; min-width:160px;">
+                <option value="">-- Ay Seçin --</option>
+            </select>
+            <button onclick="previewArchivedMonth()" class="btn-secondary">👁 Görüntüle</button>
+            <button onclick="downloadArchivedExcel()" class="btn-excel">📊 Excel İndir</button>
+            <button onclick="downloadAllExcel()" class="btn-excel">📦 Tümünü Excel</button>
+            <button onclick="deleteArchivedMonth()" class="btn-danger">🗑 Sil</button>
+            <button onclick="returnToCurrentMonth()" class="btn-secondary">↩ Güncel Ay</button>
+        </div>
+
+        <div class="legend">
+            <span class="badge badge-red">Kırmızı Etüt</span>
+            <span class="badge badge-blue">Mavi Etüt</span>
+            <span class="badge badge-past">🔒 Geçmiş gün (kilitli)</span>
+            <span class="badge badge-info">Boş hücreye tıkla → renk → öğrenci</span>
+        </div>
+
+        <div class="scroll-hint" id="scrollHint">👉 Tabloyu yatay kaydırabilirsiniz</div>
+
+        <div class="table-wrapper">
+            <table id="etutTable">
+                <thead>
+                    <tr id="lessonHeaderRow">
+                        <th rowspan="2" class="date-header">Tarih</th>
+                        <th colspan="9" data-lesson="matematik">📐 MATEMATİK</th>
+                        <th colspan="9" data-lesson="fen">🔬 FEN</th>
+                        <th colspan="9" data-lesson="türkçe">📖 TÜRKÇE</th>
+                        <th colspan="9" data-lesson="sosyal">🌍 SOSYAL</th>
+                    </tr>
+                    <tr id="slotHeaderRow"></tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </main>
+
+    <script>
+        /* ============================================================
+           1) AYARLAR
+           ============================================================ */
+
+        // ⚠️ BURAYI DOLDUR — Supabase Panel → Project Settings → API
+        // URL: sadece https://xxx.supabase.co (sonunda /rest/v1/ OLMASIN)
+        // KEY: "anon public" kısmındaki eyJhbGci... ile başlayan uzun JWT
+        const SUPABASE_URL = "https://zveunzdzdhjoxharnpgs.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZXVuemR6ZGhqb3hoYXJucGdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTExNDY2NzYsImV4cCI6MjEwNjcyMjY3Nn0.vk4x_3pOVTdNRavfeCWINWc-gsfTG0xKnrf6IPrc_l4";
+
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const ADMIN_PASSWORD = "admin123";
+
+        const TEACHERS = {
+            "Hakan Hoca":   { password: "1111", branch: "matematik" },
+            "Yasemin Hoca": { password: "2222", branch: "fen" },
+            "İsmail Hoca":  { password: "3333", branch: "türkçe" },
+            "Osman Hoca":   { password: "4444", branch: "sosyal" }
+        };
+
+        const BRANCH_LABELS = {
+            "matematik": "Matematik",
+            "fen": "Fen",
+            "türkçe": "Türkçe",
+            "sosyal": "Sosyal"
+        };
+
+        const DEFAULT_STUDENTS = [
+            "Ali Yılmaz", "Ayşe Demir", "Mehmet Kaya", "Zeynep Şahin",
+            "Can Öztürk", "Elif Aydın", "Burak Çelik", "Merve Arslan",
+            "Emre Koç", "Selin Yıldız", "Kerem Doğan", "Deniz Kurt",
+            "Ece Aslan", "Baran Taş", "İrem Polat", "Arda Erdoğan"
+        ];
+
+        /* ============================================================
+           2) DURUM (STATE) — SADECE BİR KEZ
+           ============================================================ */
+        let isAdmin = false;
+        let loggedTeacher = null;
+        let loggedBranch  = null;
+        let selectedColor = null;
+        let selectedSlot  = null;
+        let viewingArchive = null;
+
+        const lessons = ["matematik", "fen", "türkçe", "sosyal"];
+        const slotsPerLesson = 9;
+
+        // Supabase'den doldurulacak — başlangıçta boş
+        let currentData = {};
+        let archiveData = {};
+        let students = [...DEFAULT_STUDENTS];
+        let autoDates = [];
+
+        // Ay anahtarı (YYYY-MM)
+        let currentMonthKey = getMonthKey(new Date());
+
+        // Bugün
+        const TODAY = new Date();
+        TODAY.setHours(0, 0, 0, 0);
+
+        /* ============================================================
+           3) YARDIMCI FONKSİYONLAR
+           ============================================================ */
+        function getMonthKey(dateObj) {
+            const y = dateObj.getFullYear();
+            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+            return `${y}-${m}`;
+        }
+
+        function monthKeyToLabel(key) {
+            const [y, m] = key.split("-");
+            const date = new Date(parseInt(y), parseInt(m) - 1, 1);
+            return date.toLocaleString('tr-TR', { month: 'long', year: 'numeric' });
+        }
+
+        function parseDateTR(str) {
+            const parts = str.split(".");
+            return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+        }
+
+        function isPastDate(dateStr) {
+            const d = parseDateTR(dateStr);
+            d.setHours(0, 0, 0, 0);
+            return d < TODAY;
+        }
+
+        function isToday(dateStr) {
+            const d = parseDateTR(dateStr);
+            d.setHours(0, 0, 0, 0);
+            return d.getTime() === TODAY.getTime();
+        }
+
+        function setStatus(html, cls) {
+            const el = document.getElementById("stepInfo");
+            el.innerHTML = html;
+            el.className = "step-info" + (cls ? " " + cls : "");
+        }
+
+        /* ============================================================
+           4) SUPABASE — VERİ YÜKLEME
+           ============================================================ */
+        async function loadFromSupabase() {
+            try {
+                // Etütler
+                const { data: etutData, error: etutErr } = await supabaseClient
+                    .from('etutler').select('*');
+                if (etutErr) throw etutErr;
+
+                currentData = {};
+                (etutData || []).forEach(row => {
+                    currentData[row.slot_id] = {
+                        student: row.ogrenci,
+                        teacher: row.hoca,
+                        branch: row.brans,
+                        type: row.renk
+                    };
+                });
+
+                // Öğrenci listesi
+                const { data: ogrData, error: ogrErr } = await supabaseClient
+                    .from('ogrenciler').select('isim');
+                if (ogrErr) throw ogrErr;
+
+                if (ogrData && ogrData.length > 0) {
+                    students = ogrData.map(r => r.isim);
+                } else {
+                    students = [...DEFAULT_STUDENTS];
+                }
+
+                // Arşivler
+                const { data: arsivData, error: arsivErr } = await supabaseClient
+                    .from('arsiv').select('*');
+                if (arsivErr) throw arsivErr;
+
+                archiveData = {};
+                (arsivData || []).forEach(row => {
+                    archiveData[row.ay] = row.veri;
+                });
+
+                // Ay anahtarı Supabase'de meta tablosunda yoksa localStorage fallback
+                const savedMonth = localStorage.getItem('currentMonthKey');
+                if (savedMonth) currentMonthKey = savedMonth;
+
+            } catch (err) {
+                console.error("Supabase yükleme hatası:", err);
+                setStatus(`❌ Supabase bağlantı hatası: ${err.message || err}`, "");
+                throw err;
+            }
+        }
+
+        /* ============================================================
+           5) SUPABASE — ETÜTLERİ KAYDET (Fark bazlı, performanslı)
+           ============================================================ */
+        async function saveCurrent() {
+            try {
+                // Basit ve güvenli yöntem: tümünü sil, yeniden ekle
+                const { error: delErr } = await supabaseClient
+                    .from('etutler')
+                    .delete()
+                    .neq('id', '00000000-0000-0000-0000-000000000000');
+                if (delErr) throw delErr;
+
+                const rows = Object.entries(currentData).map(([slotId, d]) => ({
+                    slot_id: slotId,
+                    ogrenci: d.student,
+                    hoca: d.teacher,
+                    brans: d.branch,
+                    renk: d.type,
+                    ay: currentMonthKey
+                }));
+
+                if (rows.length > 0) {
+                    const { error: insErr } = await supabaseClient
+                        .from('etutler').insert(rows);
+                    if (insErr) throw insErr;
+                }
+            } catch (err) {
+                console.error("Kaydetme hatası:", err);
+                alert("❌ Kaydetme hatası: " + (err.message || err));
+            }
+        }
+
+        /* ============================================================
+           6) OTOMATİK ARŞİVLEME
+           ============================================================ */
+        async function checkAutoArchive() {
+            const realCurrentMonth = getMonthKey(new Date());
+
+            if (!currentMonthKey) {
+                currentMonthKey = realCurrentMonth;
+                localStorage.setItem('currentMonthKey', currentMonthKey);
+                return;
+            }
+
+            if (currentMonthKey === realCurrentMonth) return;
+
+            const hasData = Object.keys(currentData).length > 0;
+            let archivedLabel = null;
+
+            if (hasData) {
+                const baseLabel = monthKeyToLabel(currentMonthKey);
+                let finalLabel = baseLabel;
+                let counter = 1;
+                while (archiveData[finalLabel]) {
+                    finalLabel = `${baseLabel} (${counter})`;
+                    counter++;
+                }
+                archivedLabel = finalLabel;
+
+                try {
+                    const { error } = await supabaseClient
+                        .from('arsiv')
+                        .insert({ ay: finalLabel, veri: currentData });
+                    if (error) throw error;
+
+                    archiveData[finalLabel] = JSON.parse(JSON.stringify(currentData));
+                } catch (err) {
+                    console.error("Otomatik arşiv hatası:", err);
+                }
+            }
+
+            // Güncel tabloyu temizle
+            currentData = {};
+            try {
+                await supabaseClient
+                    .from('etutler')
+                    .delete()
+                    .neq('id', '00000000-0000-0000-0000-000000000000');
+            } catch (err) {
+                console.error("Temizleme hatası:", err);
+            }
+
+            currentMonthKey = realCurrentMonth;
+            localStorage.setItem('currentMonthKey', currentMonthKey);
+
+            if (archivedLabel) {
+                setTimeout(() => showAutoArchiveNotice(archivedLabel), 800);
+            }
+        }
+
+        function showAutoArchiveNotice(monthLabel) {
+            const toast = document.createElement("div");
+            toast.style.cssText = `
+                position: fixed; top: 20px; right: 20px; z-index: 9999;
+                background: #27ae60; color: white; padding: 14px 20px;
+                border-radius: 8px; font-weight: bold; font-size: 14px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                max-width: 320px; animation: slideIn 0.3s ease;
+            `;
+            toast.innerHTML = `📦 "${monthLabel}" verileri otomatik arşivlendi.<br><small style="opacity:0.9;">Admin panelinden Excel olarak indirebilirsiniz.</small>`;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.transition = "opacity 0.5s";
+                toast.style.opacity = "0";
+                setTimeout(() => toast.remove(), 500);
+            }, 5000);
+        }
+
+        /* ============================================================
+           7) BAŞLATMA
+           ============================================================ */
+        document.addEventListener("DOMContentLoaded", async () => {
+            try {
+                await loadFromSupabase();
+                await checkAutoArchive();
+                generateCurrentMonthWeekdays();
+                buildSlotHeader();
+                renderTable();
+                fillTeacherSelect();
+                fillStudentSelect();
+                updateStepInfo();
+                updateArchiveList();
+            } catch (err) {
+                console.error("Başlatma hatası:", err);
+            }
+        });
+
+        function generateCurrentMonthWeekdays() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            autoDates = [];
+            for (let day = 1; day <= daysInMonth; day++) {
+                const d = new Date(year, month, day);
+                const w = d.getDay();
+                if (w >= 1 && w <= 5) {
+                    autoDates.push(`${day}.${month + 1}.${year}`);
+                }
+            }
+        }
+
+        function buildSlotHeader() {
+            const row = document.getElementById("slotHeaderRow");
+            row.innerHTML = "";
+            for (let li = 0; li < lessons.length; li++) {
+                const lesson = lessons[li];
+                for (let i = 1; i <= slotsPerLesson; i++) {
+                    const th = document.createElement("th");
+                    th.dataset.lesson = lesson;
+                    th.innerText = i;
+                    if (i === 1) th.classList.add("slot-start");
+                    if (i === slotsPerLesson) th.classList.add("slot-end");
+                    row.appendChild(th);
+                }
+            }
+        }
+
+        function fillTeacherSelect() {
+            const sel = document.getElementById("teacherSelect");
+            sel.innerHTML = '<option value="">-- Hoca Seçin --</option>';
+            Object.keys(TEACHERS).forEach(name => {
+                const opt = document.createElement("option");
+                opt.value = name;
+                opt.innerText = `${name} (${BRANCH_LABELS[TEACHERS[name].branch]})`;
+                sel.appendChild(opt);
+            });
+        }
+
+        function fillStudentSelect() {
+            const sel = document.getElementById("studentSelect");
+            const prev = sel.value;
+            sel.innerHTML = '<option value="">-- Öğrenci Seçin --</option>';
+            students.forEach(s => {
+                const opt = document.createElement("option");
+                opt.value = s;
+                opt.innerText = s;
+                sel.appendChild(opt);
+            });
+            if (prev) sel.value = prev;
+            updateStudentStatusBadge();
+        }
+
+        /* ============================================================
+           8) HOCA GİRİŞ / ÇIKIŞ
+           ============================================================ */
+        function loginTeacher() {
+            const name = document.getElementById("teacherSelect").value;
+            const pass = document.getElementById("teacherPass").value;
+
+            if (!name) { alert("Lütfen hoca seçin!"); return; }
+            if (!pass) { alert("Lütfen şifre girin!"); return; }
+
+            const t = TEACHERS[name];
+            if (t && t.password === pass) {
+                loggedTeacher = name;
+                loggedBranch  = t.branch;
+
+                document.getElementById("loginZone").style.display = "none";
+                document.getElementById("loggedZone").style.display = "flex";
+                document.getElementById("loggedTeacherName").innerText = name;
+                document.getElementById("loggedTeacherBranch").innerText = BRANCH_LABELS[t.branch];
+                document.getElementById("colorBar").style.display = "flex";
+                document.getElementById("studentBar").style.display = "flex";
+                document.getElementById("teacherPass").value = "";
+
+                clearSlotSelection();
+                applyBranchHighlight();
+                renderTable();
+                updateStepInfo();
+            } else {
+                alert("Hatalı şifre!");
+            }
+        }
+
+        function logoutTeacher() {
+            loggedTeacher = null;
+            loggedBranch = null;
+            clearSlotSelection();
+
+            document.getElementById("loginZone").style.display = "flex";
+            document.getElementById("loggedZone").style.display = "none";
+            document.getElementById("colorBar").style.display = "none";
+            document.getElementById("studentBar").style.display = "none";
+            document.getElementById("teacherSelect").value = "";
+
+            applyBranchHighlight();
+            renderTable();
+            updateStepInfo();
+        }
+
+        function applyBranchHighlight() {
+            document.querySelectorAll("#lessonHeaderRow th[data-lesson]").forEach(th => {
+                th.style.opacity = (loggedBranch && th.dataset.lesson !== loggedBranch) ? "0.5" : "1";
+            });
+        }
+
+        /* ============================================================
+           9) ADIM BİLGİSİ
+           ============================================================ */
+        function updateStepInfo() {
+            if (viewingArchive) {
+                setStatus(`📁 Arşiv görüntüleniyor: <b>${viewingArchive}</b> (salt okunur)`, "done");
+                return;
+            }
+            if (isAdmin) {
+                setStatus("⚡ Admin Modu — Silmek için hücreye tıklayın. Geçmiş günler kilitli.");
+                return;
+            }
+            if (!loggedTeacher) {
+                setStatus("🔒 Lütfen giriş yapın.");
+                return;
+            }
+            if (!selectedSlot) {
+                setStatus(`📌 <b>${BRANCH_LABELS[loggedBranch]}</b> branşından bugün veya gelecek bir güne tıklayın.`);
+                return;
+            }
+            if (!selectedColor) {
+                setStatus(`🎨 Seçili hücre: <b>${selectedSlot.id}</b> — Şimdi renk seçin.`);
+                return;
+            }
+            setStatus(`👤 Seçili hücre: <b>${selectedSlot.id}</b> (${selectedColor}) — Şimdi öğrenci seçin.`, "done");
+        }
+
+        /* ============================================================
+           10) RENK SEÇİMİ
+           ============================================================ */
+        function selectColor(color) {
+            if (!selectedSlot) { alert("Önce bir hücre seçin!"); return; }
+            selectedColor = color;
+            document.getElementById("selectedColorInfo").innerText = `Renk: ${color}`;
+            updateColorButtons();
+            document.getElementById("studentSelect").disabled = false;
+            updateStepInfo();
+        }
+
+        function updateColorButtons() {
+            document.querySelectorAll(".color-btn").forEach(b => {
+                b.classList.toggle("active", b.dataset.color === selectedColor);
+                b.disabled = !selectedSlot;
+            });
+        }
+
+        /* ============================================================
+           11) TABLO ÇİZİMİ
+           ============================================================ */
+        function renderTable() {
+            const tbody = document.getElementById("tableBody");
+            tbody.innerHTML = "";
+
+            const dataSource = viewingArchive
+                ? (archiveData[viewingArchive] || {})
+                : currentData;
+
+            autoDates.forEach(date => {
+                const tr = document.createElement("tr");
+                const past = isPastDate(date);
+                const today = isToday(date);
+
+                if (today) tr.classList.add("today-row");
+
+                const tdDate = document.createElement("td");
+                tdDate.innerText = date + (today ? " (Bugün)" : "");
+                tr.appendChild(tdDate);
+
+                lessons.forEach(lesson => {
+                    for (let i = 1; i <= slotsPerLesson; i++) {
+                        const slotId = `${date}-${lesson}-${i}`;
+                        const tdSlot = document.createElement("td");
+                        tdSlot.className = "slot";
+                        tdSlot.dataset.id = slotId;
+                        tdSlot.dataset.lesson = lesson;
+                        if (i === 1) tdSlot.classList.add("slot-start");
+                        if (i === slotsPerLesson) tdSlot.classList.add("slot-end");
+
+                        if (dataSource[slotId]) {
+                            const d = dataSource[slotId];
+                            tdSlot.innerText = d.student;
+                            tdSlot.title = `${d.student} — ${BRANCH_LABELS[lesson]} — ${d.type} (${d.teacher})`;
+                            tdSlot.classList.add(d.type === "Kırmızı" ? "type-kirmizi" : "type-mavi");
+                        } else {
+                            tdSlot.classList.add("empty");
+                            tdSlot.innerText = "";
+                        }
+
+                        if (selectedSlot && selectedSlot.id === slotId && !viewingArchive) {
+                            tdSlot.classList.add("selected");
+                        }
+
+                        if (past && !isAdmin && !viewingArchive) {
+                            tdSlot.classList.add("past-day");
+                        }
+
+                        if (!viewingArchive && !isAdmin && loggedBranch && lesson !== loggedBranch) {
+                            if (!dataSource[slotId]) tdSlot.classList.add("branch-locked");
+                        }
+
+                        if (isAdmin && !viewingArchive) {
+                            tdSlot.classList.add("admin-editable");
+                        }
+
+                        if (today && !past) tdSlot.classList.add("today-cell");
+
+                        tdSlot.addEventListener("click", () => handleSlotClick(slotId, lesson, date));
+                        tr.appendChild(tdSlot);
+                    }
+                });
+                tbody.appendChild(tr);
+            });
+        }
+
+        /* ============================================================
+           12) SLOT TIKLAMA
+           ============================================================ */
+        function handleSlotClick(slotId, lesson, date) {
+            if (viewingArchive) {
+                alert("Arşiv görüntüleme modundasınız. Düzenleme yapılamaz.");
+                return;
+            }
+
+            if (isAdmin) {
+                if (currentData[slotId]) {
+                    if (confirm("Bu etütü silmek istediğinize emin misiniz?")) {
+                        delete currentData[slotId];
+                        saveCurrent();
+                        renderTable();
+                    }
+                } else {
+                    alert("Admin modunda boş slota atama yapılamaz.");
+                }
+                return;
+            }
+
+            if (!loggedTeacher) { alert("Lütfen önce hoca girişi yapın!"); return; }
+
+            if (isPastDate(date)) {
+                alert("❌ Geçmiş günlere etüt ataması yapılamaz!");
+                return;
+            }
+
+            if (lesson !== loggedBranch) {
+                alert(`Siz sadece ${BRANCH_LABELS[loggedBranch]} branşına etüt ekleyebilirsiniz!`);
+                return;
+            }
+            if (currentData[slotId]) { alert("Bu slot zaten dolu!"); return; }
+
+            if (selectedSlot && selectedSlot.id === slotId) {
+                clearSlotSelection();
+                renderTable();
+                updateStepInfo();
+                return;
+            }
+
+            selectedSlot = { id: slotId, lesson: lesson, date: date };
+            selectedColor = null;
+            document.getElementById("selectedColorInfo").innerText = "";
+            document.getElementById("studentSelect").value = "";
+            document.getElementById("studentSelect").disabled = true;
+            updateStudentStatusBadge();
+            updateColorButtons();
+
+            renderTable();
+            updateStepInfo();
+        }
+
+        function clearSlotSelection() {
+            selectedSlot = null;
+            selectedColor = null;
+            document.getElementById("selectedColorInfo").innerText = "";
+            document.getElementById("studentSelect").value = "";
+            document.getElementById("studentSelect").disabled = true;
+            updateStudentStatusBadge();
+            updateColorButtons();
+        }
+
+        /* ============================================================
+           13) ÖĞRENCİ SEÇİMİ → OTOMATİK ATAMA
+           ============================================================ */
+        document.getElementById("studentSelect").addEventListener("change", async function() {
+            const student = this.value;
+            updateStudentStatusBadge();
+
+            if (!student) return;
+            if (!selectedSlot) { alert("Önce bir hücre seçin!"); return; }
+            if (!selectedColor) { alert("Önce renk seçin!"); return; }
+            if (currentData[selectedSlot.id]) { alert("Bu slot zaten dolu!"); return; }
+
+            const already = Object.entries(currentData).find(
+                ([id, val]) => val && val.student === student
+            );
+            if (already) {
+                alert(`"${student}" öğrencisi zaten başka bir slota atanmış!\nSlot: ${already[0]}`);
+                this.value = "";
+                updateStudentStatusBadge();
+                return;
+            }
+
+            currentData[selectedSlot.id] = {
+                student: student,
+                teacher: loggedTeacher,
+                branch: loggedBranch,
+                type: selectedColor
+            };
+
+            await saveCurrent();
+
+            clearSlotSelection();
+            renderTable();
+            updateStepInfo();
+        });
+
+        function updateStudentStatusBadge() {
+            const val = document.getElementById("studentSelect").value;
+            document.getElementById("studentStatusBadge").innerText = val ? `Seçili: ${val}` : "Seçili: yok";
+        }
+
+        /* ============================================================
+           14) ADMIN MODU
+           ============================================================ */
+        function toggleAdminMode() {
+            if (!isAdmin) {
+                const pass = prompt("Admin şifresini girin:");
+                if (pass === ADMIN_PASSWORD) {
+                    isAdmin = true;
+                    document.getElementById("adminStatus").style.display = "inline";
+                    document.getElementById("adminControls").style.display = "flex";
+                    document.getElementById("archiveRow").style.display = "flex";
+                    document.getElementById("adminBtn").innerText = "Admin Çıkışı";
+                    renderTable();
+                    updateStepInfo();
+                } else {
+                    alert("Hatalı şifre!");
+                }
+            } else {
+                isAdmin = false;
+                viewingArchive = null;
+                document.getElementById("adminStatus").style.display = "none";
+                document.getElementById("adminControls").style.display = "none";
+                document.getElementById("archiveRow").style.display = "none";
+                document.getElementById("adminBtn").innerText = "Admin";
+                renderTable();
+                updateStepInfo();
+            }
+        }
+
+        /* ============================================================
+           15) ÖĞRENCİ LİSTESİ YÖNETİMİ
+           ============================================================ */
+        async function openStudentManager() {
+            const current = students.join("\n");
+            const input = prompt("Öğrenci listesini düzenleyin (her satıra bir isim):", current);
+            if (input === null) return;
+
+            const arr = input.split("\n").map(s => s.trim()).filter(s => s.length > 0);
+            if (arr.length === 0) { alert("En az bir öğrenci olmalı!"); return; }
+
+            try {
+                const { error: delErr } = await supabaseClient
+                    .from('ogrenciler').delete()
+                    .neq('id', '00000000-0000-0000-0000-000000000000');
+                if (delErr) throw delErr;
+
+                const rows = arr.map(isim => ({ isim }));
+                const { error: insErr } = await supabaseClient
+                    .from('ogrenciler').insert(rows);
+                if (insErr) throw insErr;
+
+                students = arr;
+                fillStudentSelect();
+                alert(`✅ ${students.length} öğrenci kaydedildi.`);
+            } catch (err) {
+                alert("❌ Kaydetme hatası: " + (err.message || err));
+            }
+        }
+
+        /* ============================================================
+           16) MANUEL ARŞİVLEME
+           ============================================================ */
+        async function saveAndClearMonth() {
+            const monthName = prompt(
+                "Arşivlenecek ayın adını girin:\n(Örn: Ekim 2026)",
+                `${new Date().toLocaleString('tr-TR', { month: 'long', year: 'numeric' })}`
+            );
+            if (!monthName) return;
+
+            if (archiveData[monthName]) {
+                if (!confirm(`"${monthName}" arşivinde zaten veri var. Üzerine yazılsın mı?`)) return;
+
+                const { error: delOldErr } = await supabaseClient
+                    .from('arsiv').delete().eq('ay', monthName);
+                if (delOldErr) { alert("Eski arşiv silme hatası: " + delOldErr.message); return; }
+            }
+
+            const count = Object.keys(currentData).length;
+            if (count === 0) {
+                if (!confirm("Güncel tablo boş. Yine de arşivlensin mi?")) return;
+            }
+
+            try {
+                const { error: insErr } = await supabaseClient
+                    .from('arsiv').insert({ ay: monthName, veri: currentData });
+                if (insErr) throw insErr;
+
+                archiveData[monthName] = JSON.parse(JSON.stringify(currentData));
+            } catch (err) {
+                alert("❌ Arşivleme hatası: " + (err.message || err));
+                return;
+            }
+
+            currentData = {};
+            try {
+                await supabaseClient
+                    .from('etutler').delete()
+                    .neq('id', '00000000-0000-0000-0000-000000000000');
+            } catch (err) {
+                console.error("Temizleme hatası:", err);
+            }
+
+            currentMonthKey = getMonthKey(new Date());
+            localStorage.setItem('currentMonthKey', currentMonthKey);
+            clearSlotSelection();
+            renderTable();
+            updateArchiveList();
+
+            alert(`✅ "${monthName}" arşivlendi (${count} etüt).`);
+        }
+
+        function updateArchiveList() {
+            const select = document.getElementById("archiveList");
+            const prev = select.value;
+            select.innerHTML = '<option value="">-- Ay Seçin --</option>';
+            const keys = Object.keys(archiveData).sort().reverse();
+            keys.forEach(month => {
+                const opt = document.createElement("option");
+                opt.value = month;
+                const cnt = Object.keys(archiveData[month] || {}).length;
+                opt.innerText = `${month} (${cnt} etüt)`;
+                select.appendChild(opt);
+            });
+            if (prev && archiveData[prev]) select.value = prev;
+        }
+
+        /* ============================================================
+           17) ARŞİV GÖRÜNTÜLEME
+           ============================================================ */
+        function previewArchivedMonth() {
+            const m = document.getElementById("archiveList").value;
+            if (!m) { alert("Lütfen bir ay seçin!"); return; }
+            viewingArchive = m;
+            clearSlotSelection();
+            renderTable();
+            updateStepInfo();
+        }
+
+        function returnToCurrentMonth() {
+            viewingArchive = null;
+            clearSlotSelection();
+            renderTable();
+            updateStepInfo();
+        }
+
+        /* ============================================================
+           18) EXCEL İNDİRME
+           ============================================================ */
+        function downloadCurrentExcel() {
+            const count = Object.keys(currentData).length;
+            if (count === 0) {
+                if (!confirm("Güncel tablo boş. Yine de Excel indirilsin mi?")) return;
+            }
+            const monthLabel = monthKeyToLabel(currentMonthKey);
+            generateExcel(monthLabel, currentData);
+        }
+
+        function downloadArchivedExcel() {
+            const m = document.getElementById("archiveList").value;
+            if (!m) { alert("Lütfen bir ay seçin!"); return; }
+            generateExcel(m, archiveData[m]);
+        }
+
+        function downloadAllExcel() {
+            const keys = Object.keys(archiveData);
+            if (keys.length === 0) { alert("Arşivde hiç kayıt yok!"); return; }
+
+            const wb = XLSX.utils.book_new();
+
+            keys.forEach(month => {
+                const ws = buildWorksheet(month, archiveData[month]);
+                let sheetName = month.replace(/[\\\/\?\*\[\]:]/g, "-").slice(0, 31);
+                XLSX.utils.book_append_sheet(wb, ws, sheetName);
+            });
+
+            const fname = `etut_arsiv_tumu_${new Date().toISOString().slice(0,10)}.xlsx`;
+            XLSX.writeFile(wb, fname);
+            alert(`✅ ${keys.length} ay tek Excel dosyasında indirildi.`);
+        }
+
+        function generateExcel(monthName, dataObj) {
+            const wb = XLSX.utils.book_new();
+            const ws = buildWorksheet(monthName, dataObj);
+            let sheetName = monthName.replace(/[\\\/\?\*\[\]:]/g, "-").slice(0, 31);
+            XLSX.utils.book_append_sheet(wb, ws, sheetName);
+            const fname = `etut_${sheetName.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0,10)}.xlsx`;
+            XLSX.writeFile(wb, fname);
+            alert(`✅ "${monthName}" Excel dosyası indirildi.`);
+        }
+
+        /* ============================================================
+           Öğrenci bazlı Excel worksheet
+           ============================================================ */
+        function buildWorksheet(monthName, dataObj) {
+            // Tarihleri topla (veride geçenler)
+            const usedDates = [];
+            const seen = new Set();
+            Object.keys(dataObj).forEach(sid => {
+                const parts = sid.split("-");
+                const date = parts[0];
+                if (!seen.has(date)) {
+                    seen.add(date);
+                    usedDates.push(date);
+                }
+            });
+
+            // Tarihe göre sırala
+            usedDates.sort((a, b) => parseDateTR(a) - parseDateTR(b));
+
+            const datesToShow = usedDates.length > 0 ? usedDates : autoDates;
+
+            // Başlık satırı
+            const header = ["Öğrenci Adı", "Toplam"];
+            datesToShow.forEach(date => {
+                lessons.forEach(lesson => {
+                    header.push(`${date} ${BRANCH_LABELS[lesson].slice(0,3)}`);
+                });
+            });
+
+            const rows = [];
+            rows.push([`Ay: ${monthName}`]);
+            rows.push([]);
+            rows.push(header);
+
+            // Öğrenci haritası
+            const studentMap = {};
+            students.forEach(s => { studentMap[s] = {}; });
+
+            Object.entries(dataObj).forEach(([slotId, d]) => {
+                if (!d || !d.student) return;
+                if (!studentMap[d.student]) studentMap[d.student] = {};
+                studentMap[d.student][slotId] = d;
+            });
+
+            // Tüm öğrenciler (veride olanlar dahil)
+            const allStudents = [...students];
+            Object.keys(studentMap).forEach(s => {
+                if (!allStudents.includes(s)) allStudents.push(s);
+            });
+
+            allStudents.forEach(student => {
+                const row = [student, 0];
+                let total = 0;
+
+                datesToShow.forEach(date => {
+                    lessons.forEach(lesson => {
+                        let found = null;
+                        for (let i = 1; i <= slotsPerLesson; i++) {
+                            const sid = `${date}-${lesson}-${i}`;
+                            if (studentMap[student] && studentMap[student][sid]) {
+                                found = { slot: i, ...studentMap[student][sid] };
+                                break;
+                            }
+                        }
+                        if (found) {
+                            row.push(`${found.slot}. slot`);
+                            total++;
+                        } else {
+                            row.push("");
+                        }
+                    });
+                });
+
+                row[1] = total;
+                rows.push(row);
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(rows);
+
+            const colWidths = [{ wch: 22 }, { wch: 10 }];
+            datesToShow.forEach(() => {
+                lessons.forEach(() => {
+                    colWidths.push({ wch: 12 });
+                });
+            });
+            ws['!cols'] = colWidths;
+
+            const totalCols = 2 + datesToShow.length * lessons.length;
+            ws['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } }
+            ];
+
+            return ws;
+        }
+
+        /* ============================================================
+           19) ARŞİV SİL
+           ============================================================ */
+        async function deleteArchivedMonth() {
+            const m = document.getElementById("archiveList").value;
+            if (!m) { alert("Lütfen bir ay seçin!"); return; }
+            if (!confirm(`"${m}" arşivini KALICI olarak silmek istediğinize emin misiniz?`)) return;
+
+            try {
+                const { error } = await supabaseClient
+                    .from('arsiv').delete().eq('ay', m);
+                if (error) throw error;
+
+                delete archiveData[m];
+                if (viewingArchive === m) {
+                    viewingArchive = null;
+                    renderTable();
+                    updateStepInfo();
+                }
+                updateArchiveList();
+                alert(`🗑 "${m}" arşivden silindi.`);
+            } catch (err) {
+                alert("❌ Silme hatası: " + (err.message || err));
+            }
+        }
+
+        /* ============================================================
+           20) YEDEKLEME (.json)
+           ============================================================ */
+        function exportData() {
+            const fullBackup = {
+                current: currentData,
+                archive: archiveData,
+                students: students,
+                currentMonthKey: currentMonthKey,
+                exportedAt: new Date().toISOString()
+            };
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(fullBackup, null, 2));
+            const a = document.createElement('a');
+            a.setAttribute("href", dataStr);
+            a.setAttribute("download", `etut_takip_yedek_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        }
+
+        async function importData() {
+            const file = document.getElementById("importFile").files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (!imported.current || !imported.archive) {
+                        alert("Geçersiz yedek dosyası.");
+                        return;
+                    }
+
+                    if (!confirm("Mevcut Supabase verileri SİLİNECEK ve yedekteki veriler yüklenecek. Onaylıyor musunuz?")) return;
+
+                    // Etütleri temizle ve yükle
+                    await supabaseClient.from('etutler').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+                    const etutRows = Object.entries(imported.current).map(([slotId, d]) => ({
+                        slot_id: slotId,
+                        ogrenci: d.student,
+                        hoca: d.teacher,
+                        brans: d.branch,
+                        renk: d.type,
+                        ay: imported.currentMonthKey || currentMonthKey
+                    }));
+                    if (etutRows.length > 0) {
+                        const { error } = await supabaseClient.from('etutler').insert(etutRows);
+                        if (error) throw error;
+                    }
+
+                    // Arşivleri temizle ve yükle
+                    await supabaseClient.from('arsiv').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+                    const arsivRows = Object.entries(imported.archive).map(([ay, veri]) => ({ ay, veri }));
+                    if (arsivRows.length > 0) {
+                        const { error } = await supabaseClient.from('arsiv').insert(arsivRows);
+                        if (error) throw error;
+                    }
+
+                    // Öğrencileri temizle ve yükle
+                    if (imported.students && imported.students.length > 0) {
+                        await supabaseClient.from('ogrenciler').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+                        const ogrRows = imported.students.map(isim => ({ isim }));
+                        const { error } = await supabaseClient.from('ogrenciler').insert(ogrRows);
+                        if (error) throw error;
+                    }
+
+                    // State'i güncelle
+                    currentData = imported.current;
+                    archiveData = imported.archive;
+                    if (imported.students) students = imported.students;
+                    if (imported.currentMonthKey) {
+                        currentMonthKey = imported.currentMonthKey;
+                        localStorage.setItem('currentMonthKey', currentMonthKey);
+                    }
+
+                    renderTable();
+                    updateArchiveList();
+                    fillStudentSelect();
+                    alert("✅ Yedek başarıyla Supabase'e yüklendi!");
+                } catch (err) {
+                    alert("❌ Yedek yükleme hatası: " + (err.message || err));
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        /* ============================================================
+           Periyodik yenileme — başka bir kullanıcı veri eklediğinde
+           görünsün diye 30 saniyede bir otomatik yenile
+           ============================================================ */
+        setInterval(async () => {
+            if (isAdmin || loggedTeacher || viewingArchive) return;
+            try {
+                const { data, error } = await supabaseClient.from('etutler').select('*');
+                if (error) return;
+                const fresh = {};
+                (data || []).forEach(row => {
+                    fresh[row.slot_id] = {
+                        student: row.ogrenci,
+                        teacher: row.hoca,
+                        branch: row.brans,
+                        type: row.renk
+                    };
+                });
+                // Sadece değişiklik varsa render et
+                if (JSON.stringify(fresh) !== JSON.stringify(currentData)) {
+                    currentData = fresh;
+                    renderTable();
+                }
+            } catch (err) {
+                // sessizce yut
+            }
+        }, 30000);
+    </script>
+</body>
+</html>
