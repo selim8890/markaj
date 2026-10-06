@@ -38,10 +38,8 @@
         button:hover { background-color: #465866; }
         button:disabled { background-color: #95a5a6; cursor: not-allowed; }
         .btn-danger { background-color: #e74c3c; }
-        .btn-danger:hover { background-color: #c0392b; }
         .btn-secondary { background-color: #7f8c8d; }
         .btn-excel { background-color: #1d6f42; }
-        .btn-excel:hover { background-color: #165a35; }
         .btn-red { background-color: #ff4d4d; }
         .btn-blue { background-color: #3498db; }
         .logged-info { color: #2ecc71; font-weight: bold; font-size: 13px; }
@@ -94,7 +92,7 @@
         .badge-red { background-color: #ff4d4d; }
         .badge-blue { background-color: #3498db; }
         .badge-info { background-color: #7f8c8d; }
-        .badge-past { background-color: #c0392b; }
+        .badge-past { background-color: #bdc3c7; }
         .badge-next { background-color: #f39c12; }
         .badge-loading { background-color: #f39c12; }
 
@@ -177,47 +175,36 @@
             box-shadow: 0 0 12px rgba(243, 156, 18, 0.8);
         }
 
-        td.slot.branch-locked {
-            background-color: #e5e5e5 !important; cursor: not-allowed !important; opacity: 0.55;
-        }
-
-        /* ===== KİLİTLİ HAFTA (geçmiş + mevcut) ===== */
-        td.slot.past-week {
-            background-color: #f5f5f5 !important;
+        /* ===== Kapalı haftalar (geçmiş + bu hafta + gelecek) ===== */
+        td.slot.disabled-week {
+            background-color: #f0f0f0 !important;
             color: #bdc3c7 !important;
             cursor: not-allowed !important;
-            opacity: 0.75;
-            position: relative;
+            opacity: 0.6;
         }
-        td.slot.past-week::after {
-            content: "🔒";
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 12px;
-            opacity: 0.7;
-        }
-        td.slot.past-week:hover { filter: none; }
-        td.slot.past-week.type-kirmizi,
-        td.slot.past-week.type-mavi { opacity: 1; }
-        td.slot.past-week.type-kirmizi::after,
-        td.slot.past-week.type-mavi::after { content: ""; }
+        td.slot.disabled-week:hover { filter: none; }
 
-        /* Mevcut hafta satırı — koyu gri (kilitli) */
+        /* Dolu hücreler (kayıtlı etütler) kapalı haftada bile görünsün */
+        td.slot.disabled-week.type-kirmizi { background-color: #ff8080 !important; color: white !important; opacity: 1; }
+        td.slot.disabled-week.type-mavi    { background-color: #7bb8e0 !important; color: white !important; opacity: 1; }
+
+        /* Bu hafta satırı — koyu gri */
         tbody tr.current-week-row td:first-child {
             background: #7f8c8d !important;
             color: white;
-            font-size: 11px;
         }
 
-        /* ===== ÖNÜMÜZDEKİ HAFTA — TURUNCU VURGU ===== */
+        /* Önümüzdeki hafta satırı — turuncu */
         tbody tr.next-week-row td:first-child {
             background: #f39c12 !important;
             color: white;
-            font-size: 11px;
         }
         td.slot.next-week-cell {
             box-shadow: inset 0 0 0 3px #f39c12;
+        }
+        td.slot.next-week-cell.branch-locked {
+            background-color: #f0e0c0 !important;
+            opacity: 0.7;
         }
 
         td.slot.admin-editable { cursor: cell !important; }
@@ -305,9 +292,8 @@
         <div class="legend">
             <span class="badge badge-red">Kırmızı Etüt</span>
             <span class="badge badge-blue">Mavi Etüt</span>
-            <span class="badge badge-past">🔒 Geçmiş + bu hafta kilitli</span>
-            <span class="badge badge-next">📌 Önümüzdeki hafta (kayıt yapılabilir)</span>
-            <span class="badge badge-info">Sadece gelecek haftalara kayıt</span>
+            <span class="badge badge-past">Kapalı hafta</span>
+            <span class="badge badge-next">📌 Önümüzdeki hafta (kayıt açık)</span>
         </div>
 
         <div class="scroll-hint" id="scrollHint">👉 Tabloyu yatay kaydırabilirsiniz</div>
@@ -355,8 +341,8 @@
 
         const ACADEMIC_YEAR = {
             label: "2026–2027",
-            start: new Date(2026, 7, 31),   // 31 Ağustos 2026 Pazartesi
-            end:   new Date(2027, 5, 25)    // 25 Haziran 2027 Cuma
+            start: new Date(2026, 7, 31),
+            end:   new Date(2027, 5, 25)
         };
 
         /* ============================================================
@@ -415,12 +401,18 @@
             el.className = "step-info" + (cls ? " " + cls : "");
         }
 
-        /* ⭐ KİLİT KURALI: geçmiş + bu hafta kilitli */
-        function isLockedWeek(monday) {
+        /* ⭐ Kural: SADECE önümüzdeki hafta açık
+           - Geçmiş haftalar → kapalı
+           - Bu hafta        → kapalı
+           - Önümüzdeki hafta → AÇIK
+           - Sonraki haftalar → kapalı
+        */
+        function isOpenWeek(monday) {
             const currentMonday = getCurrentWeekMonday();
+            const nextMonday = addDays(currentMonday, 7);
             const m = new Date(monday);
             m.setHours(0, 0, 0, 0);
-            return m.getTime() <= currentMonday.getTime();
+            return m.getTime() === nextMonday.getTime();
         }
 
         function isCurrentWeek(monday) {
@@ -430,13 +422,8 @@
             return m.getTime() === currentMonday.getTime();
         }
 
-        /* ⭐ ÖNÜMÜZDEKİ HAFTA: bu haftanın Pazartesi'si + 7 gün */
         function isNextWeek(monday) {
-            const currentMonday = getCurrentWeekMonday();
-            const nextMonday = addDays(currentMonday, 7);
-            const m = new Date(monday);
-            m.setHours(0, 0, 0, 0);
-            return m.getTime() === nextMonday.getTime();
+            return isOpenWeek(monday);
         }
 
         /* ============================================================
@@ -672,7 +659,7 @@
            ============================================================ */
         function updateStepInfo() {
             if (isAdmin) {
-                setStatus("⚡ Admin Modu — Silmek için hücreye tıklayın. Geçmiş ve bu hafta kilitli.");
+                setStatus("⚡ Admin Modu — Silmek için hücreye tıklayın. Sadece önümüzdeki hafta kayda açık.");
                 return;
             }
             if (!loggedTeacher) {
@@ -718,7 +705,7 @@
 
             weeks.forEach(w => {
                 const tr = document.createElement("tr");
-                const locked = isLockedWeek(w.monday);
+                const open = isOpenWeek(w.monday);       // sadece önümüzdeki hafta true
                 const current = isCurrentWeek(w.monday);
                 const next = isNextWeek(w.monday);
 
@@ -752,9 +739,9 @@
                             tdSlot.classList.add("selected");
                         }
 
-                        // Kilit
-                        if (locked && !isAdmin) {
-                            tdSlot.classList.add("past-week");
+                        // ⭐ Sadece önümüzdeki hafta açık; diğerleri kapalı
+                        if (!open && !isAdmin) {
+                            tdSlot.classList.add("disabled-week");
                         }
 
                         // Önümüzdeki hafta turuncu çerçeve
@@ -762,8 +749,11 @@
                             tdSlot.classList.add("next-week-cell");
                         }
 
+                        // Branş kilidi (sadece turuncu haftada etkili)
                         if (!isAdmin && loggedBranch && lesson !== loggedBranch) {
-                            if (!currentData[slotId]) tdSlot.classList.add("branch-locked");
+                            if (open && !currentData[slotId]) {
+                                tdSlot.classList.add("branch-locked");
+                            }
                         }
 
                         if (isAdmin) {
@@ -797,11 +787,12 @@
 
             if (!loggedTeacher) { alert("Lütfen önce hoca girişi yapın!"); return; }
 
-            if (isLockedWeek(week.monday)) {
+            // ⭐ Sadece önümüzdeki hafta açık
+            if (!isOpenWeek(week.monday)) {
                 if (isCurrentWeek(week.monday)) {
-                    alert("❌ Bu hafta kilitli! Lütfen önümüzdeki haftaya kayıt yapın.");
+                    alert("❌ Bu hafta kapalı! Kayıt sadece turuncu çerçeveli önümüzdeki haftaya yapılabilir.");
                 } else {
-                    alert("❌ Geçmiş haftalara etüt ataması yapılamaz!");
+                    alert("❌ Bu hafta kapalı! Kayıt sadece turuncu çerçeveli önümüzdeki haftaya yapılabilir.");
                 }
                 return;
             }
@@ -852,6 +843,12 @@
             if (!selectedSlot) { alert("Önce bir hücre seçin!"); return; }
             if (!selectedColor) { alert("Önce renk seçin!"); return; }
             if (currentData[selectedSlot.id]) { alert("Bu slot zaten dolu!"); return; }
+
+            // Sadece önümüzdeki hafta açık kontrolü
+            if (!isOpenWeek(selectedSlot.week.monday)) {
+                alert("❌ Bu hafta kapalı!");
+                return;
+            }
 
             const mondayStr = selectedSlot.week.mondayStr;
             const already = Object.entries(currentData).find(
@@ -1128,7 +1125,7 @@
                 console.log("🔍 DEBUG:");
                 console.log("  Bugün:", getToday().toLocaleDateString('tr-TR'));
                 console.log("  Bu haftanın Pazartesi'si:", cm.toLocaleDateString('tr-TR'));
-                console.log("  Önümüzdeki haftanın Pazartesi'si:", nm.toLocaleDateString('tr-TR'));
+                console.log("  AÇIK haftanın Pazartesi'si (önümüzdeki):", nm.toLocaleDateString('tr-TR'));
             }, 1500);
         });
     </script>
