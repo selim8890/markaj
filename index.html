@@ -108,7 +108,6 @@
             border: 1px solid #bdc3c7; text-align: center; padding: 2px; overflow: hidden;
         }
 
-        /* ===== HAFTA SÜTUNU: içeriğe göre daralan ===== */
         thead tr:first-child th.week-header {
             background-color: #2c3e50;
             font-size: 13px;
@@ -136,7 +135,6 @@
             background: linear-gradient(180deg, #8e44ad, #6c3483);
         }
 
-        /* ===== SLOT BAŞLIK: sabit dar genişlik ===== */
         #slotHeaderRow th {
             background-color: #465866; color: white; font-size: 11px;
             padding: 5px 1px; font-weight: normal;
@@ -182,6 +180,7 @@
             background-color: #e5e5e5 !important; cursor: not-allowed !important; opacity: 0.55;
         }
 
+        /* KİLİTLİ HAFTA (geçmiş + mevcut hafta) */
         td.slot.past-week {
             background-color: #f5f5f5 !important;
             color: #bdc3c7 !important;
@@ -203,12 +202,12 @@
         td.slot.past-week.type-kirmizi::after,
         td.slot.past-week.type-mavi::after { content: ""; }
 
+        /* Mevcut hafta satırı — hafif vurgu (kilitli olduğunu belli etsin) */
         tbody tr.current-week-row td:first-child {
-            background: #f39c12 !important;
+            background: #95a5a6 !important;
             color: white;
             font-size: 11px;
         }
-        td.slot.current-week-cell { box-shadow: inset 0 0 0 2px #f39c12; }
 
         td.slot.admin-editable { cursor: cell !important; }
 
@@ -295,8 +294,8 @@
         <div class="legend">
             <span class="badge badge-red">Kırmızı Etüt</span>
             <span class="badge badge-blue">Mavi Etüt</span>
-            <span class="badge badge-past">🔒 Geçmiş hafta (kilitli)</span>
-            <span class="badge badge-info">Boş hücreye tıkla → renk → öğrenci</span>
+            <span class="badge badge-past">🔒 Geçmiş + bu hafta kilitli</span>
+            <span class="badge badge-info">Sadece gelecek haftalara kayıt yapılabilir</span>
         </div>
 
         <div class="scroll-hint" id="scrollHint">👉 Tabloyu yatay kaydırabilirsiniz</div>
@@ -359,7 +358,7 @@
         let selectedSlot  = null;
 
         const lessons = ["matematik", "fen", "türkçe"];
-        const slotsPerLesson = 10;   // ⭐ 10'a çıkarıldı
+        const slotsPerLesson = 10;
 
         let currentData = {};
         let students = [...DEFAULT_STUDENTS];
@@ -402,13 +401,17 @@
             el.className = "step-info" + (cls ? " " + cls : "");
         }
 
-        // Mevcut hafta DA kilitli — sadece gelecek haftalara kayıt yapılabilir
-function isPastWeek(monday) {
-    return monday <= getCurrentWeekMonday();
-}
-function isCurrentWeek(monday) {
-    return monday.getTime() === getCurrentWeekMonday().getTime();
-}
+        /* ⭐ YENİ KURAL:
+           Geçmiş haftalar VE mevcut hafta kilitli
+           Sadece GELECEK haftalara kayıt yapılabilir */
+        function isLockedWeek(monday) {
+            const currentMonday = getCurrentWeekMonday();
+            return monday <= currentMonday;   // eşitlik dahil
+        }
+
+        function isCurrentWeek(monday) {
+            return monday.getTime() === getCurrentWeekMonday().getTime();
+        }
 
         /* ============================================================
            4) EĞİTİM YILI HAFTALARINI OLUŞTUR
@@ -644,7 +647,7 @@ function isCurrentWeek(monday) {
            ============================================================ */
         function updateStepInfo() {
             if (isAdmin) {
-                setStatus("⚡ Admin Modu — Silmek için hücreye tıklayın. Geçmiş haftalar kilitli.");
+                setStatus("⚡ Admin Modu — Silmek için hücreye tıklayın. Geçmiş ve bu hafta kilitli.");
                 return;
             }
             if (!loggedTeacher) {
@@ -652,7 +655,7 @@ function isCurrentWeek(monday) {
                 return;
             }
             if (!selectedSlot) {
-                setStatus(`📌 <b>${BRANCH_LABELS[loggedBranch]}</b> branşından bu hafta veya gelecek bir haftaya tıklayın.`);
+                setStatus(`📌 <b>${BRANCH_LABELS[loggedBranch]}</b> branşından <b>gelecek bir haftaya</b> tıklayın (bu hafta ve öncesi kilitli).`);
                 return;
             }
             if (!selectedColor) {
@@ -690,8 +693,8 @@ function isCurrentWeek(monday) {
 
             weeks.forEach(w => {
                 const tr = document.createElement("tr");
-                const past = isPastWeek(w.monday);   // bu hafta dahil kilitli
-                const current = isCurrentWeek(w.monday);  // sadece görsel vurgu için
+                const locked = isLockedWeek(w.monday);   // ⭐ geçmiş + bu hafta
+                const current = isCurrentWeek(w.monday);
 
                 if (current) tr.classList.add("current-week-row");
 
@@ -722,7 +725,8 @@ function isCurrentWeek(monday) {
                             tdSlot.classList.add("selected");
                         }
 
-                        if (past && !isAdmin) {
+                        // ⭐ Kilit: geçmiş + bu hafta, admin değilse
+                        if (locked && !isAdmin) {
                             tdSlot.classList.add("past-week");
                         }
 
@@ -733,8 +737,6 @@ function isCurrentWeek(monday) {
                         if (isAdmin) {
                             tdSlot.classList.add("admin-editable");
                         }
-
-                        if (current) tdSlot.classList.add("current-week-cell");
 
                         tdSlot.addEventListener("click", () => handleSlotClick(slotId, lesson, w));
                         tr.appendChild(tdSlot);
@@ -763,8 +765,13 @@ function isCurrentWeek(monday) {
 
             if (!loggedTeacher) { alert("Lütfen önce hoca girişi yapın!"); return; }
 
-            if (isPastWeek(week.monday)) {
-                alert("❌ Geçmiş haftalara etüt ataması yapılamaz!");
+            // ⭐ Kilit: geçmiş + bu hafta
+            if (isLockedWeek(week.monday)) {
+                if (isCurrentWeek(week.monday)) {
+                    alert("❌ Bu hafta kilitli! Lütfen gelecek bir haftaya kayıt yapın.");
+                } else {
+                    alert("❌ Geçmiş haftalara etüt ataması yapılamaz!");
+                }
                 return;
             }
 
