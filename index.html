@@ -95,6 +95,7 @@
         .badge-blue { background-color: #3498db; }
         .badge-info { background-color: #7f8c8d; }
         .badge-past { background-color: #c0392b; }
+        .badge-next { background-color: #f39c12; }
         .badge-loading { background-color: #f39c12; }
 
         .table-wrapper {
@@ -202,11 +203,21 @@
         td.slot.past-week.type-kirmizi::after,
         td.slot.past-week.type-mavi::after { content: ""; }
 
-        /* Mevcut hafta satırı — kilitli olduğunu belli etsin */
+        /* Mevcut hafta satırı — koyu gri (kilitli) */
         tbody tr.current-week-row td:first-child {
             background: #7f8c8d !important;
             color: white;
             font-size: 11px;
+        }
+
+        /* ===== ÖNÜMÜZDEKİ HAFTA — TURUNCU VURGU ===== */
+        tbody tr.next-week-row td:first-child {
+            background: #f39c12 !important;
+            color: white;
+            font-size: 11px;
+        }
+        td.slot.next-week-cell {
+            box-shadow: inset 0 0 0 3px #f39c12;
         }
 
         td.slot.admin-editable { cursor: cell !important; }
@@ -295,7 +306,8 @@
             <span class="badge badge-red">Kırmızı Etüt</span>
             <span class="badge badge-blue">Mavi Etüt</span>
             <span class="badge badge-past">🔒 Geçmiş + bu hafta kilitli</span>
-            <span class="badge badge-info">Sadece gelecek haftalara kayıt yapılabilir</span>
+            <span class="badge badge-next">📌 Önümüzdeki hafta (kayıt yapılabilir)</span>
+            <span class="badge badge-info">Sadece gelecek haftalara kayıt</span>
         </div>
 
         <div class="scroll-hint" id="scrollHint">👉 Tabloyu yatay kaydırabilirsiniz</div>
@@ -403,10 +415,7 @@
             el.className = "step-info" + (cls ? " " + cls : "");
         }
 
-        /* ⭐ KİLİT KURALI:
-           - Geçmiş haftalar  → kilitli
-           - Mevcut hafta     → kilitli
-           - Gelecek haftalar → açık */
+        /* ⭐ KİLİT KURALI: geçmiş + bu hafta kilitli */
         function isLockedWeek(monday) {
             const currentMonday = getCurrentWeekMonday();
             const m = new Date(monday);
@@ -419,6 +428,15 @@
             const m = new Date(monday);
             m.setHours(0, 0, 0, 0);
             return m.getTime() === currentMonday.getTime();
+        }
+
+        /* ⭐ ÖNÜMÜZDEKİ HAFTA: bu haftanın Pazartesi'si + 7 gün */
+        function isNextWeek(monday) {
+            const currentMonday = getCurrentWeekMonday();
+            const nextMonday = addDays(currentMonday, 7);
+            const m = new Date(monday);
+            m.setHours(0, 0, 0, 0);
+            return m.getTime() === nextMonday.getTime();
         }
 
         /* ============================================================
@@ -662,7 +680,7 @@
                 return;
             }
             if (!selectedSlot) {
-                setStatus(`📌 <b>${BRANCH_LABELS[loggedBranch]}</b> branşından <b>gelecek bir haftaya</b> tıklayın (bu hafta ve öncesi kilitli).`);
+                setStatus(`📌 <b>${BRANCH_LABELS[loggedBranch]}</b> branşından <b>turuncu çerçeveli önümüzdeki haftaya</b> tıklayın.`);
                 return;
             }
             if (!selectedColor) {
@@ -700,10 +718,12 @@
 
             weeks.forEach(w => {
                 const tr = document.createElement("tr");
-                const locked = isLockedWeek(w.monday);   // geçmiş + bu hafta
+                const locked = isLockedWeek(w.monday);
                 const current = isCurrentWeek(w.monday);
+                const next = isNextWeek(w.monday);
 
                 if (current) tr.classList.add("current-week-row");
+                if (next) tr.classList.add("next-week-row");
 
                 const tdWeek = document.createElement("td");
                 tdWeek.innerHTML = `<b>${w.no}. Hafta</b><br><span style="font-size:9px; font-weight:normal;">${w.mondayStr.slice(0,5)} – ${w.fridayStr.slice(0,5)}</span>`;
@@ -732,9 +752,14 @@
                             tdSlot.classList.add("selected");
                         }
 
-                        // Kilit: geçmiş + bu hafta, admin değilse
+                        // Kilit
                         if (locked && !isAdmin) {
                             tdSlot.classList.add("past-week");
+                        }
+
+                        // Önümüzdeki hafta turuncu çerçeve
+                        if (next) {
+                            tdSlot.classList.add("next-week-cell");
                         }
 
                         if (!isAdmin && loggedBranch && lesson !== loggedBranch) {
@@ -772,10 +797,9 @@
 
             if (!loggedTeacher) { alert("Lütfen önce hoca girişi yapın!"); return; }
 
-            // Kilit: geçmiş + bu hafta
             if (isLockedWeek(week.monday)) {
                 if (isCurrentWeek(week.monday)) {
-                    alert("❌ Bu hafta kilitli! Lütfen gelecek bir haftaya kayıt yapın.");
+                    alert("❌ Bu hafta kilitli! Lütfen önümüzdeki haftaya kayıt yapın.");
                 } else {
                     alert("❌ Geçmiş haftalara etüt ataması yapılamaz!");
                 }
@@ -819,7 +843,6 @@
 
         /* ============================================================
            13) ÖĞRENCİ SEÇİMİ → ATAMA
-           Kural: bir öğrenci aynı hafta içinde sadece 1 kez atanabilir
            ============================================================ */
         document.getElementById("studentSelect").addEventListener("change", async function() {
             const student = this.value;
@@ -917,7 +940,7 @@
         }
 
         /* ============================================================
-           16) EXCEL — Öğrenci × Hafta
+           16) EXCEL
            ============================================================ */
         function downloadYearExcel() {
             const wb = XLSX.utils.book_new();
@@ -1097,23 +1120,15 @@
             } catch (err) {}
         }, 30000);
 
-        /* ============================================================
-           DEBUG: Bugünün tarihi ve kilit kontrolü
-           (Konsolda görmek için: F12 → Console)
-           ============================================================ */
+        /* Debug */
         window.addEventListener("load", () => {
             setTimeout(() => {
-                const currentMonday = getCurrentWeekMonday();
+                const cm = getCurrentWeekMonday();
+                const nm = addDays(cm, 7);
                 console.log("🔍 DEBUG:");
                 console.log("  Bugün:", getToday().toLocaleDateString('tr-TR'));
-                console.log("  Bu haftanın Pazartesi'si:", currentMonday.toLocaleDateString('tr-TR'));
-                const currentWeek = weeks.find(w => w.monday.getTime() === currentMonday.getTime());
-                if (currentWeek) {
-                    console.log("  Bu hafta tabloda:", currentWeek.no + ". Hafta (" + currentWeek.mondayStr + " – " + currentWeek.fridayStr + ")");
-                    console.log("  Kilitli mi?", isLockedWeek(currentWeek.monday));
-                } else {
-                    console.log("  ⚠️ Bu hafta tabloda bulunamadı!");
-                }
+                console.log("  Bu haftanın Pazartesi'si:", cm.toLocaleDateString('tr-TR'));
+                console.log("  Önümüzdeki haftanın Pazartesi'si:", nm.toLocaleDateString('tr-TR'));
             }, 1500);
         });
     </script>
