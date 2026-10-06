@@ -180,12 +180,12 @@
             background-color: #e5e5e5 !important; cursor: not-allowed !important; opacity: 0.55;
         }
 
-        /* KİLİTLİ HAFTA (geçmiş + mevcut hafta) */
+        /* ===== KİLİTLİ HAFTA (geçmiş + mevcut) ===== */
         td.slot.past-week {
             background-color: #f5f5f5 !important;
             color: #bdc3c7 !important;
             cursor: not-allowed !important;
-            opacity: 0.7;
+            opacity: 0.75;
             position: relative;
         }
         td.slot.past-week::after {
@@ -194,7 +194,7 @@
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
             font-size: 12px;
-            opacity: 0.6;
+            opacity: 0.7;
         }
         td.slot.past-week:hover { filter: none; }
         td.slot.past-week.type-kirmizi,
@@ -202,9 +202,9 @@
         td.slot.past-week.type-kirmizi::after,
         td.slot.past-week.type-mavi::after { content: ""; }
 
-        /* Mevcut hafta satırı — hafif vurgu (kilitli olduğunu belli etsin) */
+        /* Mevcut hafta satırı — kilitli olduğunu belli etsin */
         tbody tr.current-week-row td:first-child {
-            background: #95a5a6 !important;
+            background: #7f8c8d !important;
             color: white;
             font-size: 11px;
         }
@@ -341,11 +341,10 @@
             "Ece Aslan", "Baran Taş", "İrem Polat", "Arda Erdoğan"
         ];
 
-        // ⭐ EĞİTİM YILI AYARLARI
         const ACADEMIC_YEAR = {
             label: "2026–2027",
-            start: new Date(2026, 7, 31),   // 31 Ağustos 2026 (Pazartesi)
-            end:   new Date(2027, 5, 25)    // 25 Haziran 2027 (Cuma)
+            start: new Date(2026, 7, 31),   // 31 Ağustos 2026 Pazartesi
+            end:   new Date(2027, 5, 25)    // 25 Haziran 2027 Cuma
         };
 
         /* ============================================================
@@ -364,9 +363,6 @@
         let students = [...DEFAULT_STUDENTS];
         let weeks = [];
 
-        const TODAY = new Date();
-        TODAY.setHours(0, 0, 0, 0);
-
         /* ============================================================
            3) YARDIMCI FONKSİYONLAR
            ============================================================ */
@@ -374,6 +370,12 @@
 
         function dateToTR(d) {
             return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()}`;
+        }
+
+        function getToday() {
+            const d = new Date();
+            d.setHours(0, 0, 0, 0);
+            return d;
         }
 
         function getMonday(date) {
@@ -392,7 +394,7 @@
         }
 
         function getCurrentWeekMonday() {
-            return getMonday(TODAY);
+            return getMonday(getToday());
         }
 
         function setStatus(html, cls) {
@@ -401,21 +403,26 @@
             el.className = "step-info" + (cls ? " " + cls : "");
         }
 
-        /* ⭐ YENİ KURAL:
-           Geçmiş haftalar VE mevcut hafta kilitli
-           Sadece GELECEK haftalara kayıt yapılabilir */
+        /* ⭐ KİLİT KURALI:
+           - Geçmiş haftalar  → kilitli
+           - Mevcut hafta     → kilitli
+           - Gelecek haftalar → açık */
         function isLockedWeek(monday) {
             const currentMonday = getCurrentWeekMonday();
-            return monday <= currentMonday;   // eşitlik dahil
+            const m = new Date(monday);
+            m.setHours(0, 0, 0, 0);
+            return m.getTime() <= currentMonday.getTime();
         }
 
         function isCurrentWeek(monday) {
-            return monday.getTime() === getCurrentWeekMonday().getTime();
+            const currentMonday = getCurrentWeekMonday();
+            const m = new Date(monday);
+            m.setHours(0, 0, 0, 0);
+            return m.getTime() === currentMonday.getTime();
         }
 
         /* ============================================================
            4) EĞİTİM YILI HAFTALARINI OLUŞTUR
-           31 Ağu 2026 (Pzt) → 25 Haz 2027 (Cum)
            ============================================================ */
         function buildAcademicWeeks() {
             const list = [];
@@ -693,7 +700,7 @@
 
             weeks.forEach(w => {
                 const tr = document.createElement("tr");
-                const locked = isLockedWeek(w.monday);   // ⭐ geçmiş + bu hafta
+                const locked = isLockedWeek(w.monday);   // geçmiş + bu hafta
                 const current = isCurrentWeek(w.monday);
 
                 if (current) tr.classList.add("current-week-row");
@@ -725,7 +732,7 @@
                             tdSlot.classList.add("selected");
                         }
 
-                        // ⭐ Kilit: geçmiş + bu hafta, admin değilse
+                        // Kilit: geçmiş + bu hafta, admin değilse
                         if (locked && !isAdmin) {
                             tdSlot.classList.add("past-week");
                         }
@@ -765,7 +772,7 @@
 
             if (!loggedTeacher) { alert("Lütfen önce hoca girişi yapın!"); return; }
 
-            // ⭐ Kilit: geçmiş + bu hafta
+            // Kilit: geçmiş + bu hafta
             if (isLockedWeek(week.monday)) {
                 if (isCurrentWeek(week.monday)) {
                     alert("❌ Bu hafta kilitli! Lütfen gelecek bir haftaya kayıt yapın.");
@@ -1089,6 +1096,26 @@
                 }
             } catch (err) {}
         }, 30000);
+
+        /* ============================================================
+           DEBUG: Bugünün tarihi ve kilit kontrolü
+           (Konsolda görmek için: F12 → Console)
+           ============================================================ */
+        window.addEventListener("load", () => {
+            setTimeout(() => {
+                const currentMonday = getCurrentWeekMonday();
+                console.log("🔍 DEBUG:");
+                console.log("  Bugün:", getToday().toLocaleDateString('tr-TR'));
+                console.log("  Bu haftanın Pazartesi'si:", currentMonday.toLocaleDateString('tr-TR'));
+                const currentWeek = weeks.find(w => w.monday.getTime() === currentMonday.getTime());
+                if (currentWeek) {
+                    console.log("  Bu hafta tabloda:", currentWeek.no + ". Hafta (" + currentWeek.mondayStr + " – " + currentWeek.fridayStr + ")");
+                    console.log("  Kilitli mi?", isLockedWeek(currentWeek.monday));
+                } else {
+                    console.log("  ⚠️ Bu hafta tabloda bulunamadı!");
+                }
+            }, 1500);
+        });
     </script>
 </body>
 </html>
