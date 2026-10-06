@@ -402,12 +402,13 @@
             el.className = "step-info" + (cls ? " " + cls : "");
         }
 
-        function isPastWeek(monday) {
-            return monday < getCurrentWeekMonday();
-        }
-        function isCurrentWeek(monday) {
-            return monday.getTime() === getCurrentWeekMonday().getTime();
-        }
+        // Mevcut hafta DA kilitli — sadece gelecek haftalara kayıt yapılabilir
+function isPastWeek(monday) {
+    return monday <= getCurrentWeekMonday();
+}
+function isCurrentWeek(monday) {
+    return monday.getTime() === getCurrentWeekMonday().getTime();
+}
 
         /* ============================================================
            4) EĞİTİM YILI HAFTALARINI OLUŞTUR
@@ -689,8 +690,8 @@
 
             weeks.forEach(w => {
                 const tr = document.createElement("tr");
-                const past = isPastWeek(w.monday);
-                const current = isCurrentWeek(w.monday);
+                const past = isPastWeek(w.monday);   // bu hafta dahil kilitli
+                const current = isCurrentWeek(w.monday);  // sadece görsel vurgu için
 
                 if (current) tr.classList.add("current-week-row");
 
