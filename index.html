@@ -94,6 +94,7 @@
         .badge-info { background-color: #7f8c8d; }
         .badge-past { background-color: #bdc3c7; }
         .badge-next { background-color: #f39c12; }
+        .badge-yoklama { background-color: #27ae60; }
         .badge-loading { background-color: #f39c12; }
 
         .table-wrapper {
@@ -150,6 +151,7 @@
         tbody td {
             height: 36px; font-size: 10px; font-weight: bold;
             white-space: normal; line-height: 1.1; word-break: break-word; padding: 2px 1px;
+            position: relative;
         }
         tbody td:first-child {
             font-weight: bold; font-size: 11px;
@@ -175,6 +177,29 @@
             box-shadow: 0 0 12px rgba(243, 156, 18, 0.8);
         }
 
+        /* ===== YOKLAMA ALINDI ===== */
+        td.slot.attended {
+            box-shadow: inset 0 0 0 3px #27ae60 !important;
+        }
+        td.slot.attended::before {
+            content: "✓";
+            position: absolute;
+            top: 1px;
+            right: 3px;
+            color: #27ae60;
+            font-weight: 900;
+            font-size: 14px;
+            text-shadow: 0 0 3px white, 0 0 3px white, 0 0 3px white;
+            line-height: 1;
+            pointer-events: none;
+            z-index: 2;
+        }
+        td.slot.attended.type-kirmizi::before,
+        td.slot.attended.type-mavi::before {
+            color: #ffffff;
+            text-shadow: 0 0 3px #27ae60, 0 0 3px #27ae60;
+        }
+
         /* ===== Kapalı haftalar (geçmiş + bu hafta + gelecek) ===== */
         td.slot.disabled-week {
             background-color: #f0f0f0 !important;
@@ -183,24 +208,26 @@
             opacity: 0.6;
         }
         td.slot.disabled-week:hover { filter: none; }
-
-        /* Dolu hücreler (kayıtlı etütler) kapalı haftada bile görünsün */
         td.slot.disabled-week.type-kirmizi { background-color: #ff8080 !important; color: white !important; opacity: 1; }
         td.slot.disabled-week.type-mavi    { background-color: #7bb8e0 !important; color: white !important; opacity: 1; }
+        td.slot.disabled-week.attended { opacity: 1; }
 
-        /* Bu hafta satırı — koyu gri */
+        /* Bu hafta satırı */
         tbody tr.current-week-row td:first-child {
             background: #7f8c8d !important;
             color: white;
         }
 
-        /* Önümüzdeki hafta satırı — turuncu */
+        /* Önümüzdeki hafta satırı */
         tbody tr.next-week-row td:first-child {
             background: #f39c12 !important;
             color: white;
         }
         td.slot.next-week-cell {
             box-shadow: inset 0 0 0 3px #f39c12;
+        }
+        td.slot.next-week-cell.attended {
+            box-shadow: inset 0 0 0 3px #f39c12, inset 0 0 0 5px #27ae60 !important;
         }
         td.slot.next-week-cell.branch-locked {
             background-color: #f0e0c0 !important;
@@ -226,6 +253,7 @@
             tbody td { height: 32px; font-size: 9px; }
             tbody td:first-child { font-size: 9px; padding: 3px 6px; }
             #slotHeaderRow th { width: 34px; min-width: 34px; font-size: 10px; }
+            td.slot.attended::before { font-size: 12px; top: 0; right: 2px; }
         }
 
         .scroll-hint {
@@ -294,6 +322,7 @@
             <span class="badge badge-blue">Mavi Etüt</span>
             <span class="badge badge-past">Kapalı hafta</span>
             <span class="badge badge-next">📌 Önümüzdeki hafta (kayıt açık)</span>
+            <span class="badge badge-yoklama">✓ Yoklama alındı (çift tık ile işaretle)</span>
         </div>
 
         <div class="scroll-hint" id="scrollHint">👉 Tabloyu yatay kaydırabilirsiniz</div>
@@ -357,7 +386,7 @@
         const lessons = ["matematik", "fen", "türkçe"];
         const slotsPerLesson = 10;
 
-        let currentData = {};
+        let currentData = {};   // slotId -> { student, teacher, branch, type, yoklama }
         let students = [...DEFAULT_STUDENTS];
         let weeks = [];
 
@@ -401,12 +430,6 @@
             el.className = "step-info" + (cls ? " " + cls : "");
         }
 
-        /* ⭐ Kural: SADECE önümüzdeki hafta açık
-           - Geçmiş haftalar → kapalı
-           - Bu hafta        → kapalı
-           - Önümüzdeki hafta → AÇIK
-           - Sonraki haftalar → kapalı
-        */
         function isOpenWeek(monday) {
             const currentMonday = getCurrentWeekMonday();
             const nextMonday = addDays(currentMonday, 7);
@@ -427,7 +450,7 @@
         }
 
         /* ============================================================
-           4) EĞİTİM YILI HAFTALARINI OLUŞTUR
+           4) EĞİTİM YILI HAFTALARI
            ============================================================ */
         function buildAcademicWeeks() {
             const list = [];
@@ -474,7 +497,8 @@
                         student: row.ogrenci,
                         teacher: row.hoca,
                         branch: row.brans,
-                        type: row.renk
+                        type: row.renk,
+                        yoklama: row.yoklama === true
                     };
                 });
 
@@ -529,7 +553,8 @@
                     hoca: d.teacher,
                     brans: d.branch,
                     renk: d.type,
-                    ay: ACADEMIC_YEAR.label
+                    ay: ACADEMIC_YEAR.label,
+                    yoklama: d.yoklama === true
                 }));
 
                 if (rows.length > 0) {
@@ -659,7 +684,7 @@
            ============================================================ */
         function updateStepInfo() {
             if (isAdmin) {
-                setStatus("⚡ Admin Modu — Silmek için hücreye tıklayın. Sadece önümüzdeki hafta kayda açık.");
+                setStatus("⚡ Admin Modu — Silmek için tıklayın, yoklama için çift tıklayın.");
                 return;
             }
             if (!loggedTeacher) {
@@ -667,7 +692,7 @@
                 return;
             }
             if (!selectedSlot) {
-                setStatus(`📌 <b>${BRANCH_LABELS[loggedBranch]}</b> branşından <b>turuncu çerçeveli önümüzdeki haftaya</b> tıklayın.`);
+                setStatus(`📌 <b>${BRANCH_LABELS[loggedBranch]}</b> branşından <b>turuncu çerçeveli önümüzdeki haftaya</b> tıklayın. Yoklama için dolu hücreye çift tıklayın.`);
                 return;
             }
             if (!selectedColor) {
@@ -705,7 +730,7 @@
 
             weeks.forEach(w => {
                 const tr = document.createElement("tr");
-                const open = isOpenWeek(w.monday);       // sadece önümüzdeki hafta true
+                const open = isOpenWeek(w.monday);
                 const current = isCurrentWeek(w.monday);
                 const next = isNextWeek(w.monday);
 
@@ -726,11 +751,16 @@
                         if (i === 1) tdSlot.classList.add("slot-start");
                         if (i === slotsPerLesson) tdSlot.classList.add("slot-end");
 
-                        if (currentData[slotId]) {
-                            const d = currentData[slotId];
-                            tdSlot.innerText = d.student;
-                            tdSlot.title = `${d.student} — ${BRANCH_LABELS[lesson]} — ${d.type} (${d.teacher})`;
-                            tdSlot.classList.add(d.type === "Kırmızı" ? "type-kirmizi" : "type-mavi");
+                        const data = currentData[slotId];
+
+                        if (data) {
+                            tdSlot.innerText = data.student;
+                            tdSlot.title = `${data.student} — ${BRANCH_LABELS[lesson]} — ${data.type} (${data.teacher})\n${data.yoklama ? "✓ Yoklama alındı" : "○ Yoklama alınmadı"}\nÇift tık: yoklama değiştir`;
+                            tdSlot.classList.add(data.type === "Kırmızı" ? "type-kirmizi" : "type-mavi");
+
+                            if (data.yoklama) {
+                                tdSlot.classList.add("attended");
+                            }
                         } else {
                             tdSlot.innerText = "";
                         }
@@ -739,19 +769,16 @@
                             tdSlot.classList.add("selected");
                         }
 
-                        // ⭐ Sadece önümüzdeki hafta açık; diğerleri kapalı
                         if (!open && !isAdmin) {
                             tdSlot.classList.add("disabled-week");
                         }
 
-                        // Önümüzdeki hafta turuncu çerçeve
                         if (next) {
                             tdSlot.classList.add("next-week-cell");
                         }
 
-                        // Branş kilidi (sadece turuncu haftada etkili)
                         if (!isAdmin && loggedBranch && lesson !== loggedBranch) {
-                            if (open && !currentData[slotId]) {
+                            if (open && !data) {
                                 tdSlot.classList.add("branch-locked");
                             }
                         }
@@ -760,7 +787,21 @@
                             tdSlot.classList.add("admin-editable");
                         }
 
-                        tdSlot.addEventListener("click", () => handleSlotClick(slotId, lesson, w));
+                        // Tek tık: seçim / admin silme
+                        tdSlot.addEventListener("click", (e) => {
+                            if (e.detail === 1) {
+                                setTimeout(() => {
+                                    if (e.detail === 1) handleSlotClick(slotId, lesson, w);
+                                }, 220);
+                            }
+                        });
+
+                        // Çift tık: yoklama toggle
+                        tdSlot.addEventListener("dblclick", (e) => {
+                            e.preventDefault();
+                            handleYoklamaToggle(slotId, lesson);
+                        });
+
                         tr.appendChild(tdSlot);
                     }
                 });
@@ -787,13 +828,13 @@
 
             if (!loggedTeacher) { alert("Lütfen önce hoca girişi yapın!"); return; }
 
-            // ⭐ Sadece önümüzdeki hafta açık
+            // Dolu hücreye tek tık → bilgi ver
+            if (currentData[slotId]) {
+                return; // yoklama için çift tık uyarısı zaten title'da
+            }
+
             if (!isOpenWeek(week.monday)) {
-                if (isCurrentWeek(week.monday)) {
-                    alert("❌ Bu hafta kapalı! Kayıt sadece turuncu çerçeveli önümüzdeki haftaya yapılabilir.");
-                } else {
-                    alert("❌ Bu hafta kapalı! Kayıt sadece turuncu çerçeveli önümüzdeki haftaya yapılabilir.");
-                }
+                alert("❌ Bu hafta kapalı! Kayıt sadece turuncu çerçeveli önümüzdeki haftaya yapılabilir.");
                 return;
             }
 
@@ -801,7 +842,6 @@
                 alert(`Siz sadece ${BRANCH_LABELS[loggedBranch]} branşına etüt ekleyebilirsiniz!`);
                 return;
             }
-            if (currentData[slotId]) { alert("Bu slot zaten dolu!"); return; }
 
             if (selectedSlot && selectedSlot.id === slotId) {
                 clearSlotSelection();
@@ -822,6 +862,39 @@
             updateStepInfo();
         }
 
+        /* ============================================================
+           13) YOKLAMA TOGGLE (ÇİFT TIK)
+           ============================================================ */
+        async function handleYoklamaToggle(slotId, lesson) {
+            const data = currentData[slotId];
+
+            if (!data) {
+                alert("Bu hücrede etüt yok! Yoklama sadece dolu hücrelerde alınır.");
+                return;
+            }
+
+            // Yetki kontrolü: sadece atamayı yapan hoca veya admin
+            if (!isAdmin) {
+                if (!loggedTeacher) { alert("Lütfen giriş yapın!"); return; }
+                if (data.teacher !== loggedTeacher) {
+                    alert(`Bu etüdü sadece ${data.teacher} hocamız yoklayabilir!`);
+                    return;
+                }
+            }
+
+            // Toggle
+            data.yoklama = !data.yoklama;
+
+            await saveCurrent();
+            renderTable();
+
+            if (data.yoklama) {
+                setStatus(`✅ <b>${data.student}</b> — yoklama alındı (${BRANCH_LABELS[lesson]}).`, "done");
+            } else {
+                setStatus(`⚪ <b>${data.student}</b> — yoklama kaldırıldı.`);
+            }
+        }
+
         function clearSlotSelection() {
             selectedSlot = null;
             selectedColor = null;
@@ -833,7 +906,7 @@
         }
 
         /* ============================================================
-           13) ÖĞRENCİ SEÇİMİ → ATAMA
+           14) ÖĞRENCİ SEÇİMİ → ATAMA
            ============================================================ */
         document.getElementById("studentSelect").addEventListener("change", async function() {
             const student = this.value;
@@ -844,7 +917,6 @@
             if (!selectedColor) { alert("Önce renk seçin!"); return; }
             if (currentData[selectedSlot.id]) { alert("Bu slot zaten dolu!"); return; }
 
-            // Sadece önümüzdeki hafta açık kontrolü
             if (!isOpenWeek(selectedSlot.week.monday)) {
                 alert("❌ Bu hafta kapalı!");
                 return;
@@ -865,7 +937,8 @@
                 student: student,
                 teacher: loggedTeacher,
                 branch: loggedBranch,
-                type: selectedColor
+                type: selectedColor,
+                yoklama: false
             };
 
             await saveCurrent();
@@ -881,7 +954,7 @@
         }
 
         /* ============================================================
-           14) ADMIN
+           15) ADMIN
            ============================================================ */
         function toggleAdminMode() {
             if (!isAdmin) {
@@ -907,7 +980,7 @@
         }
 
         /* ============================================================
-           15) ÖĞRENCİ LİSTESİ
+           16) ÖĞRENCİ LİSTESİ
            ============================================================ */
         async function openStudentManager() {
             const current = students.join("\n");
@@ -937,7 +1010,7 @@
         }
 
         /* ============================================================
-           16) EXCEL
+           17) EXCEL — Yoklama dahil
            ============================================================ */
         function downloadYearExcel() {
             const wb = XLSX.utils.book_new();
@@ -949,7 +1022,7 @@
         }
 
         function buildYearWorksheet(dataObj) {
-            const header = ["Öğrenci Adı", "Toplam"];
+            const header = ["Öğrenci Adı", "Toplam", "Yoklama ✓"];
             weeks.forEach(w => {
                 lessons.forEach(lesson => {
                     header.push(`${w.no}.Hf ${BRANCH_LABELS[lesson].slice(0,3)}`);
@@ -979,7 +1052,10 @@
 
                 if (!map[d.student]) map[d.student] = {};
                 if (!map[d.student][week.no]) map[d.student][week.no] = {};
-                map[d.student][week.no][lesson] = slotNo;
+                map[d.student][week.no][lesson] = {
+                    slot: slotNo,
+                    yoklama: d.yoklama === true
+                };
             });
 
             const allStudents = [...students];
@@ -988,31 +1064,35 @@
             });
 
             allStudents.forEach(student => {
-                const row = [student, 0];
+                const row = [student, 0, 0];
                 let total = 0;
+                let attendedTotal = 0;
 
                 weeks.forEach(w => {
                     lessons.forEach(lesson => {
                         const wk = map[student] && map[student][w.no];
-                        const slotNo = wk && wk[lesson];
-                        if (slotNo) {
-                            row.push(`${slotNo}. slot`);
+                        const cell = wk && wk[lesson];
+                        if (cell) {
+                            const mark = cell.yoklama ? "✓" : "○";
+                            row.push(`${cell.slot}. slot ${mark}`);
                             total++;
+                            if (cell.yoklama) attendedTotal++;
                         } else {
                             row.push("");
                         }
                     });
                 });
                 row[1] = total;
+                row[2] = attendedTotal;
                 rows.push(row);
             });
 
             const ws = XLSX.utils.aoa_to_sheet(rows);
-            const colWidths = [{ wch: 22 }, { wch: 8 }];
-            weeks.forEach(() => lessons.forEach(() => colWidths.push({ wch: 10 })));
+            const colWidths = [{ wch: 22 }, { wch: 8 }, { wch: 10 }];
+            weeks.forEach(() => lessons.forEach(() => colWidths.push({ wch: 12 })));
             ws['!cols'] = colWidths;
 
-            const totalCols = 2 + weeks.length * lessons.length;
+            const totalCols = 3 + weeks.length * lessons.length;
             ws['!merges'] = [
                 { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } }
             ];
@@ -1026,7 +1106,7 @@
         }
 
         /* ============================================================
-           17) YEDEKLEME
+           18) YEDEKLEME
            ============================================================ */
         function exportData() {
             const fullBackup = {
@@ -1066,7 +1146,8 @@
                         hoca: d.teacher,
                         brans: d.branch,
                         renk: d.type,
-                        ay: ACADEMIC_YEAR.label
+                        ay: ACADEMIC_YEAR.label,
+                        yoklama: d.yoklama === true
                     }));
                     if (etutRows.length > 0) {
                         const { error } = await supabaseClient.from('etutler').insert(etutRows);
@@ -1107,7 +1188,8 @@
                         student: row.ogrenci,
                         teacher: row.hoca,
                         branch: row.brans,
-                        type: row.renk
+                        type: row.renk,
+                        yoklama: row.yoklama === true
                     };
                 });
                 if (JSON.stringify(fresh) !== JSON.stringify(currentData)) {
@@ -1116,18 +1198,6 @@
                 }
             } catch (err) {}
         }, 30000);
-
-        /* Debug */
-        window.addEventListener("load", () => {
-            setTimeout(() => {
-                const cm = getCurrentWeekMonday();
-                const nm = addDays(cm, 7);
-                console.log("🔍 DEBUG:");
-                console.log("  Bugün:", getToday().toLocaleDateString('tr-TR'));
-                console.log("  Bu haftanın Pazartesi'si:", cm.toLocaleDateString('tr-TR'));
-                console.log("  AÇIK haftanın Pazartesi'si (önümüzdeki):", nm.toLocaleDateString('tr-TR'));
-            }, 1500);
-        });
     </script>
 </body>
 </html>
