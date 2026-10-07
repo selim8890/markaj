@@ -150,11 +150,11 @@
         #slotHeaderRow th.slot-start, tbody td.slot.slot-start { border-left: 4px solid #2c3e50 !important; }
 
         tbody td {
-    height: 62px; font-size: 11px; font-weight: bold;
-    white-space: normal; line-height: 1.15; word-break: break-word; padding: 4px 4px;
-    position: relative;
-    vertical-align: middle;
-}
+            height: 62px; font-size: 11px; font-weight: bold;
+            white-space: normal; line-height: 1.15; word-break: break-word; padding: 4px 4px;
+            position: relative;
+            vertical-align: middle;
+        }
         tbody td:first-child {
             font-weight: bold; font-size: 11px;
             background: #ecf0f1; color: #2c3e50;
@@ -180,15 +180,12 @@
         }
 
         /* ===== YOKLAMA ÇERÇEVESİ ===== */
-        /* Yoklama alındı → yeşil çerçeve */
         td.slot.attended {
             box-shadow: inset 0 0 0 3px #27ae60 !important;
         }
-        /* Yoklama alınmadı → kırmızı çerçeve */
         td.slot.not-attended {
             box-shadow: inset 0 0 0 3px #e74c3c !important;
         }
-        /* Önümüzdeki hafta + yoklama → turuncu dış + yeşil/kırmızı iç */
         td.slot.next-week-cell.attended {
             box-shadow: inset 0 0 0 3px #f39c12, inset 0 0 0 6px #27ae60 !important;
         }
@@ -196,7 +193,7 @@
             box-shadow: inset 0 0 0 3px #f39c12, inset 0 0 0 6px #e74c3c !important;
         }
 
-        /* ===== Kapalı haftalar (geçmiş + bu hafta + gelecek) ===== */
+        /* ===== Kapalı haftalar ===== */
         td.slot.disabled-week {
             background-color: #f0f0f0 !important;
             color: #bdc3c7 !important;
@@ -230,6 +227,9 @@
 
         td.slot.admin-editable { cursor: cell !important; }
 
+        /* ============================================================
+           MOBİL — TABLET
+           ============================================================ */
         @media (max-width: 768px) {
             header { padding: 10px; flex-direction: column; align-items: stretch; }
             header h1 { font-size: 15px; text-align: center; }
@@ -242,11 +242,29 @@
             .controls > div { display: flex; flex-wrap: wrap; gap: 6px; }
             .controls button, .controls select { flex: 1; min-width: 100px; }
             .table-wrapper { padding: 4px; }
-            thead tr:first-child th { font-size: 12px; padding: 7px 2px; }
+            thead tr:first-child th { font-size: 12px; padding: 8px 4px; }
+            thead tr:first-child th.week-header { font-size: 11px; padding: 6px 8px; }
+
+            /* Büyük hücreler */
+            #slotHeaderRow th { width: 70px; min-width: 70px; font-size: 12px; padding: 8px 2px; }
+            tbody td { height: 72px; font-size: 12px; padding: 4px 4px; line-height: 1.2; }
+            tbody td:first-child { font-size: 11px; padding: 4px 8px; min-width: 78px; }
+        }
+
+        /* ============================================================
+           MOBİL — TELEFON (dar ekran)
+           ============================================================ */
+        @media (max-width: 480px) {
+            .table-wrapper { padding: 2px; }
+            thead tr:first-child th { font-size: 11px; padding: 6px 3px; }
             thead tr:first-child th.week-header { font-size: 10px; padding: 6px 6px; }
-            tbody td { height: 54px; font-size: 10px; padding: 3px 2px; }
-            tbody td:first-child { font-size: 9px; padding: 3px 6px; }
-            #slotHeaderRow th { width: 34px; min-width: 34px; font-size: 10px; }
+
+            #slotHeaderRow th { width: 64px; min-width: 64px; font-size: 11px; padding: 6px 1px; }
+            tbody td { height: 68px; font-size: 11px; padding: 3px 3px; line-height: 1.15; }
+            tbody td:first-child { font-size: 10px; padding: 3px 6px; min-width: 70px; }
+
+            .color-btn { flex: 1; text-align: center; padding: 10px 8px; }
+            .student-bar select { min-width: 0; width: 100%; max-width: none; }
         }
 
         .scroll-hint {
@@ -314,9 +332,9 @@
             <span class="badge badge-red">Kırmızı Etüt</span>
             <span class="badge badge-blue">Mavi Etüt</span>
             <span class="badge badge-past">Kapalı hafta</span>
-            <span class="badge badge-next">📌 Önümüzdeki hafta (kayıt açık)</span>
-            <span class="badge badge-green">✓ Yeşil çerçeve: yoklama alındı</span>
-            <span class="badge badge-redframe">✗ Kırmızı çerçeve: yoklama alınmadı</span>
+            <span class="badge badge-next">📌 Önümüzdeki hafta</span>
+            <span class="badge badge-green">✓ Yoklama alındı</span>
+            <span class="badge badge-redframe">✗ Yoklama alınmadı</span>
         </div>
 
         <div class="scroll-hint" id="scrollHint">👉 Tabloyu yatay kaydırabilirsiniz</div>
@@ -749,10 +767,9 @@
 
                         if (data) {
                             tdSlot.innerText = data.student;
-                            tdSlot.title = `${data.student} — ${BRANCH_LABELS[lesson]} — ${data.type} (${data.teacher})\n${data.yoklama ? "✓ Yoklama alındı (yeşil çerçeve)" : "✗ Yoklama alınmadı (kırmızı çerçeve)"}\nÇift tık: yoklama değiştir`;
+                            tdSlot.title = `${data.student} — ${BRANCH_LABELS[lesson]} — ${data.type} (${data.teacher})\n${data.yoklama ? "✓ Yoklama alındı" : "✗ Yoklama alınmadı"}\nÇift tık: yoklama değiştir`;
                             tdSlot.classList.add(data.type === "Kırmızı" ? "type-kirmizi" : "type-mavi");
 
-                            // Yoklama çerçevesi
                             if (data.yoklama) {
                                 tdSlot.classList.add("attended");
                             } else {
@@ -793,7 +810,7 @@
                             }
                         });
 
-                        // Çift tık: yoklama
+                        // Çift tık → yoklama
                         tdSlot.addEventListener("dblclick", (e) => {
                             e.preventDefault();
                             handleYoklamaToggle(slotId, lesson);
@@ -825,11 +842,7 @@
 
             if (!loggedTeacher) { alert("Lütfen önce hoca girişi yapın!"); return; }
 
-            // Dolu hücre → çift tık uyarısı
-            if (currentData[slotId]) {
-                // sessizce geç, çift tık için uyarı zaten title'da
-                return;
-            }
+            if (currentData[slotId]) return;
 
             if (!isOpenWeek(week.monday)) {
                 alert("❌ Bu hafta kapalı! Kayıt sadece turuncu çerçeveli önümüzdeki haftaya yapılabilir.");
@@ -871,7 +884,6 @@
                 return;
             }
 
-            // Yetki: sadece etüdü veren hoca veya admin
             if (!isAdmin) {
                 if (!loggedTeacher) { alert("Lütfen giriş yapın!"); return; }
                 if (data.teacher !== loggedTeacher) {
@@ -880,7 +892,6 @@
                 }
             }
 
-            // Toggle
             data.yoklama = !data.yoklama;
 
             await saveCurrent();
