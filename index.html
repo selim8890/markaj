@@ -254,18 +254,34 @@
         /* ============================================================
            MOBİL — TELEFON (dar ekran)
            ============================================================ */
-        @media (max-width: 480px) {
-            .table-wrapper { padding: 2px; }
-            thead tr:first-child th { font-size: 11px; padding: 6px 3px; }
-            thead tr:first-child th.week-header { font-size: 10px; padding: 6px 6px; }
+        /* ============================================================
+   TELEFON DİKEY — 480px ve altı
+   Hücreler daha da büyük, okunabilirlik ön planda
+   ============================================================ */
+@media (max-width: 480px) {
+    .table-wrapper { padding: 2px; }
+    thead tr:first-child th { font-size: 11px; padding: 6px 3px; }
+    thead tr:first-child th.week-header { font-size: 10px; padding: 6px 6px; }
 
-            #slotHeaderRow th { width: 64px; min-width: 64px; font-size: 11px; padding: 6px 1px; }
-            tbody td { height: 68px; font-size: 11px; padding: 3px 3px; line-height: 1.15; }
-            tbody td:first-child { font-size: 10px; padding: 3px 6px; min-width: 70px; }
+    /* ⭐ Slot sütunları BÜYÜK — 80px */
+    #slotHeaderRow th { width: 80px; min-width: 80px; font-size: 12px; padding: 8px 2px; }
+    tbody td {
+        height: 80px;
+        font-size: 12px;
+        padding: 5px 4px;
+        line-height: 1.25;
+    }
+    tbody td:first-child {
+        font-size: 11px;
+        padding: 4px 8px;
+        min-width: 84px;
+    }
 
-            .color-btn { flex: 1; text-align: center; padding: 10px 8px; }
-            .student-bar select { min-width: 0; width: 100%; max-width: none; }
-        }
+    .color-btn { flex: 1; text-align: center; padding: 10px 8px; font-size: 12px; }
+    .student-bar select { min-width: 0; width: 100%; max-width: none; }
+    .step-info { font-size: 11px; padding: 8px 8px; }
+    button { font-size: 12px; padding: 8px 10px; min-height: 40px; }
+}
 
         .scroll-hint {
             display: none; text-align: center; font-size: 11px; color: #7f8c8d;
